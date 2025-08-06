@@ -19,7 +19,7 @@ jobs:
       - name: Restore config.yaml from secrets
         run: |
           mkdir -p ./configs
-          echo "${{ secrets.CONFIG_YAML }}" > ./configs/config.yaml
+          echo "${{ secrets.CONFIG_YAML }}" > ./internal/config/config.yaml
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
