@@ -27,6 +27,7 @@ var shortenCmd = &cobra.Command{
 	Short: "Run the link shortening server",
 	Run: func(cmd *cobra.Command, args []string) {
 
+		fmt.Println("shorten DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
 			filePath = "internal/config/config.yaml"
@@ -94,7 +95,7 @@ var shortenCmd = &cobra.Command{
 
 		kafkaProducer, err := handler.InitKafkaProducer(&cfg)
 		if err != nil {
-			logger.Fatal("Ошибка инициализации Kafka")
+			logger.Info("Ошибка инициализации Kafka")
 		}
 		if kafkaProducer != nil {
 			defer func() {
