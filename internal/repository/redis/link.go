@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -22,7 +23,7 @@ func NewLink(client *redis.Client, logger *logrus.Logger) *Link {
 func (c *Link) GetShortLink(ctx context.Context, originalURL string) (string, error) {
 	cacheKey := "shorten:" + originalURL
 	result, err := c.client.Get(ctx, cacheKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return "", nil
 	}
 	if err != nil {
@@ -44,7 +45,7 @@ func (c *Link) SetShortLink(ctx context.Context, originalURL, shortLink string, 
 func (c *Link) GetOriginalURL(ctx context.Context, shortLink string) (string, error) {
 	cacheKey := "redirect:" + shortLink
 	result, err := c.client.Get(ctx, cacheKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return "", nil
 	}
 	if err != nil {

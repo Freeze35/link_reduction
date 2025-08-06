@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"linkreduction/internal/mocks"
-	"linkreduction/internal/service"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -79,9 +78,9 @@ func TestService_ShortenURL(t *testing.T) {
 			mockBehavior: func(ctx context.Context, repo *mocks.LinkRepo, cache *mocks.LinkCache) {
 				cache.On("GetShortLink", ctx, "https://new.com").Return("", nil)
 				repo.On("FindByOriginalURL", ctx, "https://new.com").Return("", nil)
-				repo.On("FindByShortLink", ctx, service.GenerateShortLink("https://new.com")).Return("", nil)
+				repo.On("FindByShortLink", ctx, generateShortLink("https://new.com")).Return("", nil)
 			},
-			expectedLink: service.GenerateShortLink("https://new.com"),
+			expectedLink: generateShortLink("https://new.com"),
 			expectError:  false,
 		},
 		{
@@ -129,7 +128,7 @@ func TestService_ShortenURL(t *testing.T) {
 			mockBehavior: func(ctx context.Context, repo *mocks.LinkRepo, cache *mocks.LinkCache) {
 				cache.On("GetShortLink", ctx, "https://shortgenerr.com").Return("", nil)
 				repo.On("FindByOriginalURL", ctx, "https://shortgenerr.com").Return("", nil)
-				repo.On("FindByShortLink", ctx, service.GenerateShortLink("https://shortgenerr.com")).Return("", fmt.Errorf("lookup error"))
+				repo.On("FindByShortLink", ctx, generateShortLink("https://shortgenerr.com")).Return("", fmt.Errorf("lookup error"))
 			},
 			expectedLink: "",
 			expectError:  true,
@@ -141,9 +140,9 @@ func TestService_ShortenURL(t *testing.T) {
 				cache.On("GetShortLink", ctx, "https://collide.com").Return("", nil)
 				repo.On("FindByOriginalURL", ctx, "https://collide.com").Return("", nil)
 
-				repo.On("FindByShortLink", ctx, service.GenerateShortLink("https://collide.com")).Return("taken", nil)
-				repo.On("FindByShortLink", ctx, service.GenerateShortLink("https://collide.com_1")).Return("taken", nil)
-				repo.On("FindByShortLink", ctx, service.GenerateShortLink("https://collide.com_2")).Return("taken", nil)
+				repo.On("FindByShortLink", ctx, generateShortLink("https://collide.com")).Return("taken", nil)
+				repo.On("FindByShortLink", ctx, generateShortLink("https://collide.com_1")).Return("taken", nil)
+				repo.On("FindByShortLink", ctx, generateShortLink("https://collide.com_2")).Return("taken", nil)
 			},
 			expectedLink: "",
 			expectError:  true,
@@ -396,14 +395,14 @@ func TestService_InsertBatch(t *testing.T) {
 	}
 }
 
-func getMocksWithService() (ctx context.Context, mockRepo *mocks.LinkRepo, mockCache *mocks.LinkCache, svc *service.Service) {
+func getMocksWithService() (ctx context.Context, mockRepo *mocks.LinkRepo, mockCache *mocks.LinkCache, svc *Service) {
 
 	ctx = context.Background()
 
 	// Создаем моки
 	mockRepo = new(mocks.LinkRepo)
 	mockCache = new(mocks.LinkCache)
-	svc = service.NewLinkService(mockRepo, mockCache)
+	svc = NewLinkService(mockRepo, mockCache)
 
 	return ctx, mockRepo, mockCache, svc
 }

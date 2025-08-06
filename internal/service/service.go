@@ -24,7 +24,7 @@ func NewLinkService(repo LinkRepo, cache LinkCache) *Service {
 // ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
 func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, error) {
 	// Валидация URL
-	if err := ValidateURL(originalURL); err != nil {
+	if err := validateURL(originalURL); err != nil {
 		return "", err
 	}
 
@@ -54,7 +54,7 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, e
 		if i > 0 {
 			inputURL = fmt.Sprintf("%s_%d", originalURL, i)
 		}
-		shortLink := GenerateShortLink(inputURL)
+		shortLink := generateShortLink(inputURL)
 
 		if existing, err := s.Repo.FindByShortLink(ctx, shortLink); err != nil {
 			return "", fmt.Errorf("ошибка проверки ключа: %v", err)
@@ -110,8 +110,7 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string,
 	return originalURL, nil
 }
 
-// GenerateShortLink генерирует короткий ключ (6 символов)
-func GenerateShortLink(originalURL string) string {
+func generateShortLink(originalURL string) string {
 	hash := md5.Sum([]byte(originalURL))
 	return fmt.Sprintf("%x", hash)[:6]
 }
@@ -136,8 +135,7 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 	return nil
 }
 
-// validateURL проверяет, является ли URL корректным
-func ValidateURL(originalURL string) error {
+func validateURL(originalURL string) error {
 	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
 		return fmt.Errorf("некорректный URL: должен начинаться с http:// или https://")
 	}
