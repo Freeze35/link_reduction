@@ -6,28 +6,28 @@ import (
 )
 
 type Config struct {
-	DB     DBConfig     `mapstructure:"db"`
-	Server ServerConfig `mapstructure:"server"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	Kafka  KafkaConfig  `mapstructure:"kafka"`
+	DB     DBC    `mapstructure:"db"`
+	Server Server `mapstructure:"server"`
+	Redis  Redis  `mapstructure:"redis"`
+	Kafka  Kafka  `mapstructure:"kafka"`
 }
 
-type DBConfig struct {
+type DBC struct {
 	PostgresDB string `mapstructure:"postgresdb_dsn"`
 	LinksDB    string `mapstructure:"linksdb_dsn"`
 	Name       string `mapstructure:"name"`
 	Migrations string `mapstructure:"migrations"`
 }
 
-type ServerConfig struct {
+type Server struct {
 	BaseURL string `mapstructure:"base_url"`
 }
 
-type RedisConfig struct {
+type Redis struct {
 	URL string `mapstructure:"url"`
 }
 
-type KafkaConfig struct {
+type Kafka struct {
 	Brokers string `mapstructure:"brokers"`
 }
 
