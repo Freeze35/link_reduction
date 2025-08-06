@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"linkreduction/internal/config"
 	"linkreduction/internal/repository/postgres"
 	"linkreduction/internal/repository/redis"
 	"log"
@@ -12,7 +13,6 @@ import (
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"linkreduction/internal/cleanup"
@@ -26,13 +26,11 @@ import (
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
 	Short: "Run the link shortening server",
-	Long: `The shorten command starts the link shortening server, loading configuration from a .env file.
-	Use --file to specify a custom file path (default: .env in current directory).`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
-			filePath = ".env"
+			filePath = "internal/config/config.yaml"
 		}
 
 		absPath, err := filepath.Abs(filePath)
@@ -41,6 +39,23 @@ var shortenCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			fmt.Printf("Файл не найден: %s\n", absPath)
+			os.Exit(1)
+		} else if err != nil {
+			fmt.Printf("Ошибка проверки файла: %v\n", err)
+			os.Exit(1)
+		}
+
+		data, err := os.ReadFile(absPath)
+		if err != nil {
+			fmt.Printf("Ошибка чтения файла: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Содержимое файла:")
+		fmt.Println(string(data))
+
 		logger := logrus.New()
 		logger.SetFormatter(&logrus.JSONFormatter{})
 		logger.SetLevel(logrus.InfoLevel)
@@ -48,16 +63,17 @@ var shortenCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		if err := godotenv.Load(absPath); err != nil {
+		cfg, err := config.LoadConfig(absPath)
+		if err != nil {
 			logger.WithFields(logrus.Fields{
 				"component": "shorten",
 				"error":     err,
-			}).Fatal("Ошибка загрузки .env файла")
+			}).Fatal("Ошибка загрузки конфигурационного файла")
 		}
 
-		migrations.RunMigrations(logger)
+		migrations.RunMigrations(logger, &cfg)
 
-		db, err := handler.InitPostgres()
+		db, err := handler.InitPostgres(&cfg)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации базы данных")
 		}
@@ -67,7 +83,7 @@ var shortenCmd = &cobra.Command{
 			}
 		}()
 
-		redisClient, err := handler.RedisConnect(ctx)
+		redisClient, err := handler.RedisConnect(ctx, &cfg)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации Redis")
 		}
@@ -77,7 +93,7 @@ var shortenCmd = &cobra.Command{
 			}
 		}()
 
-		kafkaProducer, err := handler.InitKafkaProducer()
+		kafkaProducer, err := handler.InitKafkaProducer(&cfg)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации Kafka")
 		}
@@ -96,9 +112,10 @@ var shortenCmd = &cobra.Command{
 
 		linkService := service.NewLinkService(linkRepo, cache)
 		cleanupService := cleanup.NewCleanupService(ctx, linkRepo, logger)
-		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer, linkRepo, cache, logger, linkService)
+		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer,
+			linkRepo, cache, logger, linkService, &cfg)
 
-		h, err := handler.NewHandler(linkService, metrics, logger)
+		h, err := handler.NewHandler(linkService, metrics, logger, &cfg)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации обработчика")
 		}

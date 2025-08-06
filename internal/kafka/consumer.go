@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/sirupsen/logrus"
-	configKafka "linkreduction/internal/config"
+	"linkreduction/internal/config"
 	"linkreduction/internal/models"
 	"linkreduction/internal/service"
-	"os"
 	"strings"
 	"time"
 )
@@ -29,10 +28,13 @@ type Consumer struct {
 	cache       service.LinkCache
 	logger      *logrus.Logger
 	linkService *service.Service
+	cfg         *config.Config
 }
 
 // NewConsumer создаёт новый экземпляр Consumer
-func NewConsumer(ctx context.Context, producer sarama.SyncProducer, repo service.LinkRepo, cache service.LinkCache, logger *logrus.Logger, linkService *service.Service) *Consumer {
+func NewConsumer(ctx context.Context, producer sarama.SyncProducer,
+	repo service.LinkRepo, cache service.LinkCache,
+	logger *logrus.Logger, linkService *service.Service, cfg *config.Config) *Consumer {
 	return &Consumer{
 		ctx:         ctx,
 		producer:    producer,
@@ -40,6 +42,7 @@ func NewConsumer(ctx context.Context, producer sarama.SyncProducer, repo service
 		cache:       cache,
 		logger:      logger,
 		linkService: linkService,
+		cfg:         cfg,
 	}
 }
 
@@ -68,7 +71,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 // ConsumeShortenURLs обрабатывает сообщения из Kafka
 func (c *Consumer) ConsumeShortenURLs() error {
-	kafkaEnv := os.Getenv("KAFKA_BROKERS")
+	kafkaEnv := c.cfg.Kafka.Brokers
 	kafkaBrokers := strings.Split(kafkaEnv, ",")
 
 	if len(kafkaBrokers) == 0 || kafkaBrokers[0] == "" {
@@ -88,7 +91,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	var consumerGroup sarama.ConsumerGroup
 	var err error
 	for i := 0; i < 10; i++ {
-		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, configKafka.KafkaShortenURLsGroup, config)
+		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, ShortenURLsGroup, config)
 		if err == nil {
 			break
 		}
@@ -103,7 +106,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	defer consumerGroup.Close()
 
 	for {
-		err := consumerGroup.Consume(c.ctx, []string{configKafka.KafkaShortenURLsTopic}, c)
+		err := consumerGroup.Consume(c.ctx, []string{ShortenURLsTopic}, c)
 		if err != nil {
 			c.logger.WithError(err).Error("Ошибка потребления сообщений Kafka")
 			time.Sleep(5 * time.Second)

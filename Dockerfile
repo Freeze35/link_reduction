@@ -16,12 +16,12 @@ WORKDIR /app
 
 COPY --from=builder /app/linkreduction .
 
-COPY .env .
-
 COPY ./migrations ./migrations
+
+COPY ./internal/config ./internal/config
 
 RUN chmod +x ./linkreduction
 
 EXPOSE 8080
 
-CMD ["./linkreduction", "shorten", "--file", "/app/.env"]
+CMD ["./linkreduction", "shorten"]

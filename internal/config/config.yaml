@@ -1,0 +1,14 @@
+db:
+  postgresdb_dsn: "host=db port=5432 user=user password=password dbname=postgres sslmode=disable"
+  linksdb_dsn: "host=db port=5432 user=user password=password dbname=linksDB sslmode=disable"
+  name: "linksDB"
+  migrations: "file:///app/migrations/"
+
+server:
+  base_url: "http://localhost:8080"
+
+redis:
+  url: "redis:6379"
+
+kafka:
+  brokers: "kafka:9092"

@@ -9,18 +9,18 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/sirupsen/logrus"
-	"os"
+	"linkreduction/internal/config"
 )
 
-func RunMigrations(logger *logrus.Logger) {
+func RunMigrations(logger *logrus.Logger, cfg *config.Config) {
 
-	targetDBName := os.Getenv("DBNAME") // Название создаваемой БД
+	targetDBName := cfg.DB.Name // Название создаваемой БД
 	if targetDBName == "" {
 		logger.Fatal("targetDBName не установлен")
 	}
 
 	// Сначала подключаемся к системной БД (postgres)
-	sysDSN := os.Getenv("DB_DSN_POSTGRES")
+	sysDSN := cfg.DB.PostgresDB
 
 	db, err := sql.Open("postgres", sysDSN)
 	if err != nil {
@@ -52,7 +52,7 @@ func RunMigrations(logger *logrus.Logger) {
 	}
 
 	// Сначала подключаемся к системной БД (postgres)
-	newDBDSN := os.Getenv("DB_DSN_LINKSDB")
+	newDBDSN := cfg.DB.LinksDB
 
 	newDB, err := sql.Open("postgres", newDBDSN)
 	if err != nil {
@@ -66,7 +66,7 @@ func RunMigrations(logger *logrus.Logger) {
 	}(newDB)
 
 	// Получаем путь к схемам миграций в migrations -> linksDB без указания названия базы данных
-	migrationPath := os.Getenv("MIGRATION_LINKS_PATH")
+	migrationPath := cfg.DB.Migrations
 
 	if migrationPath == "" {
 		logger.Fatal("migrationPath не установлен")

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"
-	"os"
+	"linkreduction/internal/config"
 	"strings"
 	"time"
 )
 
-func InitPostgres() (*sql.DB, error) {
-	dbURL := os.Getenv("DB_DSN_LINKSDB")
+func InitPostgres(cfg *config.Config) (*sql.DB, error) {
+	dbURL := cfg.DB.LinksDB
 	if dbURL == "" {
 		return nil, fmt.Errorf("переменная окружения DB_DSN_LINKSDB не задана")
 	}
@@ -29,8 +29,8 @@ func InitPostgres() (*sql.DB, error) {
 	return db, nil
 }
 
-func RedisConnect(ctx context.Context) (*redis.Client, error) {
-	redisURL := os.Getenv("REDIS_URL")
+func RedisConnect(ctx context.Context, cfg *config.Config) (*redis.Client, error) {
+	redisURL := cfg.Redis.URL
 	if redisURL == "" {
 		return nil, fmt.Errorf("переменная окружения REDIS_URL не задана")
 	}
@@ -46,8 +46,8 @@ func RedisConnect(ctx context.Context) (*redis.Client, error) {
 
 // GetKafkaBrokers получает список Kafka брокеров из переменной окружения KAFKA_BROKERS.
 // Возвращает срез строк с адресами брокеров или ошибку, если переменная не задана или содержит недопустимые значения.
-func GetKafkaBrokers() ([]string, error) {
-	kafkaEnv := os.Getenv("KAFKA_BROKERS")
+func GetKafkaBrokers(cfg *config.Config) ([]string, error) {
+	kafkaEnv := cfg.Kafka.Brokers
 	if kafkaEnv == "" {
 		return nil, fmt.Errorf("KAFKA_BROKERS не задана")
 	}
@@ -93,9 +93,9 @@ func ConnectKafkaProducer(brokers []string, cfg *sarama.Config) (sarama.SyncProd
 }
 
 // InitKafkaProducer объединяет шаги инициализации Kafka продюсера:
-func InitKafkaProducer() (sarama.SyncProducer, error) {
+func InitKafkaProducer(cfg *config.Config) (sarama.SyncProducer, error) {
 
-	brokers, err := GetKafkaBrokers()
+	brokers, err := GetKafkaBrokers(cfg)
 	if err != nil {
 		return nil, err
 	}

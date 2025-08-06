@@ -10,20 +10,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"linkreduction/internal/config"
+	"linkreduction/internal/kafka"
 	"linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
 	"net/http"
-	"os"
 )
-
-// BaseURL - базовый домен для коротких ссылок
-var BaseURL = os.Getenv("BASE_URL")
 
 type Handler struct {
 	service  *service.Service
 	metrics  *initprometheus.PrometheusMetrics
 	logger   *logrus.Logger
 	producer sarama.SyncProducer
+	cfg      *config.Config
 }
 
 type ShortenRequest struct {
@@ -35,12 +33,13 @@ type ShortenMessage struct {
 	ShortLink   string `json:"short_link"`
 }
 
-func NewHandler(service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger) (*Handler, error) {
+func NewHandler(service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger, cfg *config.Config) (*Handler, error) {
 
 	return &Handler{
 		service: service,
 		metrics: metrics,
 		logger:  logger,
+		cfg:     cfg,
 	}, nil
 }
 
@@ -97,6 +96,8 @@ func (h *Handler) checkOriginalURL(c *fiber.Ctx) (string, error) {
 
 func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
+	baseURL := h.cfg.Server.BaseURL
+
 	originalURL, err := h.checkOriginalURL(c)
 
 	ctx := c.Context()
@@ -107,7 +108,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 		})
 	}
 
-	shortURL := fmt.Sprintf("%s/%s", BaseURL, shortLink)
+	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
 	// Если Kafka доступна, отправляем сообщение
 	if h.producer != nil {
@@ -123,7 +124,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 		}
 
 		_, _, err = h.producer.SendMessage(&sarama.ProducerMessage{
-			Topic: config.KafkaShortenURLsTopic,
+			Topic: kafka.ShortenURLsTopic,
 			Value: sarama.ByteEncoder(messageBytes),
 		})
 		if err != nil {
