@@ -17,3 +17,8 @@ build:
 # Генерация go.mod
 gomod:
 	go mod init LinkReduction
+
+cover:
+		set CGO_ENABLED=1 && go test -race -coverprofile=coverage.out ./...
+		go tool cover -html=coverage.out
+		rm coverage.out

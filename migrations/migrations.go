@@ -24,7 +24,7 @@ func RunMigrations(logger *logrus.Logger) {
 
 	db, err := sql.Open("postgres", sysDSN)
 	if err != nil {
-		logger.Fatal("ошибка подключения к системной БД: %v", err)
+		logger.Fatalf("ошибка подключения к системной БД: %v", err)
 	}
 	defer func(db *sql.DB) {
 		err := db.Close()
