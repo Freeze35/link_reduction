@@ -15,7 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"linkreduction/internal/cleanup"
 	"linkreduction/internal/handler"
 	"linkreduction/internal/kafka"
 	"linkreduction/internal/prometheus"
@@ -111,7 +110,7 @@ var shortenCmd = &cobra.Command{
 		cache := redis.NewLink(redisClient, logger)
 
 		linkService := service.NewLinkService(linkRepo, cache)
-		cleanupService := cleanup.NewCleanupService(ctx, linkRepo, logger)
+
 		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer,
 			linkRepo, cache, logger, linkService, &cfg)
 
@@ -131,7 +130,6 @@ var shortenCmd = &cobra.Command{
 			}()
 		}
 
-		// где-то в другом месте (например, select или отдельная горутина):
 		go func() {
 			select {
 			case err := <-errChan:
@@ -143,7 +141,8 @@ var shortenCmd = &cobra.Command{
 			}
 		}()
 
-		go cleanupService.CleanupOldLinks()
+		//
+		go linkService.CleanupOldLinks()
 
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

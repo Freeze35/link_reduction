@@ -16,8 +16,8 @@ func TestNewLinkService(t *testing.T) {
 	_, mockRepo, mockCache, svc := getMocksWithService()
 
 	assert.NotNil(t, svc)
-	assert.Equal(t, mockRepo, svc.Repo)
-	assert.Equal(t, mockCache, svc.Cache)
+	assert.Equal(t, mockRepo, svc.repo)
+	assert.Equal(t, mockCache, svc.cache)
 }
 
 // Возврат короткой ссылки из кэша

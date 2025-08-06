@@ -53,7 +53,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	batchTimeout := 10 * time.Second // Максимальное время ожидания для батча
 
 	batchChan := make(chan models.LinkURL, batchSize)
-
+	defer close(batchChan)
 	// Запускаем горутину для пакетной вставки
 	go c.processBatchInsert(c.ctx, batchChan, batchSize, batchTimeout)
 
@@ -64,8 +64,6 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		return err
 	}
 
-	// Закрываем канал после обработки всех сообщений
-	close(batchChan)
 	return nil
 }
 
@@ -84,14 +82,14 @@ func (c *Consumer) ConsumeShortenURLs() error {
 		}
 	}
 
-	config := sarama.NewConfig()
-	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	sconfig := sarama.NewConfig()
+	sconfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	sconfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	var consumerGroup sarama.ConsumerGroup
 	var err error
 	for i := 0; i < 10; i++ {
-		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, ShortenURLsGroup, config)
+		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, ShortenURLsGroup, sconfig)
 		if err == nil {
 			break
 		}

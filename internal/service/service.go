@@ -12,13 +12,31 @@ import (
 
 // Service - сервис для работы с сокращением ссылок
 type Service struct {
-	Repo  LinkRepo
-	Cache LinkCache
+	ctx   context.Context
+	repo  LinkRepo
+	cache LinkCache
 }
 
 // NewLinkService создаёт новый экземпляр Service
 func NewLinkService(repo LinkRepo, cache LinkCache) *Service {
-	return &Service{Repo: repo, Cache: cache}
+	return &Service{repo: repo, cache: cache}
+}
+
+// CleanupOldLinks периодически удаляет записи старше 2 недель
+func (s *Service) CleanupOldLinks() {
+
+	ticker := time.NewTicker(2 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			_, err := s.repo.DeleteOldLinks(s.ctx, "2 weeks")
+			if err != nil {
+				continue
+			}
+		}
+	}
 }
 
 // ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
@@ -30,19 +48,19 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, e
 
 	// Проверка в кэше
 
-	if cachedShortLink, err := s.Cache.GetShortLink(ctx, originalURL); err != nil {
+	if cachedShortLink, err := s.cache.GetShortLink(ctx, originalURL); err != nil {
 		return "", fmt.Errorf("ошибка чтения из кэша: %v", err)
 	} else if cachedShortLink != "" {
 		return cachedShortLink, nil
 	}
 
 	// Проверка в БД
-	shortLink, err := s.Repo.FindByOriginalURL(ctx, originalURL)
+	shortLink, err := s.repo.FindByOriginalURL(ctx, originalURL)
 	if err != nil {
 		return "", fmt.Errorf("ошибка проверки URL в базе данных: %w", err)
 	}
 	if shortLink != "" {
-		if err := s.Cache.SetShortLink(ctx, originalURL, shortLink, time.Minute*10); err != nil {
+		if err := s.cache.SetShortLink(ctx, originalURL, shortLink, time.Minute*10); err != nil {
 			return "", fmt.Errorf("ошибка записи в кэш: %w", err)
 		}
 		return shortLink, nil
@@ -56,7 +74,7 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, e
 		}
 		shortLink := generateShortLink(inputURL)
 
-		if existing, err := s.Repo.FindByShortLink(ctx, shortLink); err != nil {
+		if existing, err := s.repo.FindByShortLink(ctx, shortLink); err != nil {
 			return "", fmt.Errorf("ошибка проверки ключа: %v", err)
 		} else if existing == "" { // Ключ уникален
 			return shortLink, nil
@@ -73,11 +91,11 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, e
 
 // InsertLink вставляет новую ссылку в хранилище
 func (s *Service) InsertLink(ctx context.Context, originalURL, shortLink string) error {
-	err := s.Repo.Insert(ctx, originalURL, shortLink)
+	err := s.repo.Insert(ctx, originalURL, shortLink)
 	if err != nil {
 		return err
 	}
-	if err := s.Cache.SetShortLink(ctx, originalURL, shortLink, time.Minute*10); err != nil {
+	if err := s.cache.SetShortLink(ctx, originalURL, shortLink, time.Minute*10); err != nil {
 		return fmt.Errorf("не удалось вставить новую ссылку: %v", err)
 	}
 
@@ -87,14 +105,14 @@ func (s *Service) InsertLink(ctx context.Context, originalURL, shortLink string)
 // GetOriginalURL получает оригинальный URL по короткой ссылке
 func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string, error) {
 	// Проверка в кэше
-	if cachedURL, err := s.Cache.GetOriginalURL(ctx, shortLink); err != nil {
+	if cachedURL, err := s.cache.GetOriginalURL(ctx, shortLink); err != nil {
 		return "", fmt.Errorf("ошибка чтения из кэша: %v", err)
 	} else if cachedURL != "" {
 		return cachedURL, nil
 	}
 
 	// Проверка в БД
-	originalURL, err := s.Repo.FindByShortLink(ctx, shortLink)
+	originalURL, err := s.repo.FindByShortLink(ctx, shortLink)
 	if err != nil {
 		return "", fmt.Errorf("ошибка базы данных: %v", err)
 	}
@@ -103,7 +121,7 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string,
 	}
 
 	// Кэширование результата
-	if err := s.Cache.SetOriginalURL(ctx, shortLink, originalURL, 10*60); err != nil {
+	if err := s.cache.SetOriginalURL(ctx, shortLink, originalURL, 10*60); err != nil {
 		return "", fmt.Errorf("ошибка записи в кэш: %v", err)
 	}
 
@@ -121,14 +139,14 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 		return fmt.Errorf("длина батча нулевая")
 	}
 
-	rowsAffected, err := s.Repo.InsertBatch(ctx, batch)
+	rowsAffected, err := s.repo.InsertBatch(ctx, batch)
 	if err != nil {
 		/*for range batch {// Здесь можно добавить метрику для ошибок, если нужно}*/
 		return fmt.Errorf("ошибка при внедрение батча %v", err)
 	}
 
 	for _, link := range batch[:rowsAffected] {
-		if err := s.Cache.SetShortLink(ctx, link.OriginalURL, link.ShortLink, time.Minute*10); err != nil {
+		if err := s.cache.SetShortLink(ctx, link.OriginalURL, link.ShortLink, time.Minute*10); err != nil {
 			return fmt.Errorf("ошибка записи в Redis (shorten): %v,%v", link.OriginalURL, err)
 		}
 	}
