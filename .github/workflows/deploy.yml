@@ -42,5 +42,5 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /home/vpn/linkreduction
-            docker-compose pull app
-            docker-compose up -d app
+            sudo docker-compose pull app
+            sudo docker-compose up -d app
