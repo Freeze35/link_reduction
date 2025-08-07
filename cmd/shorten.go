@@ -22,7 +22,7 @@ import (
 	"linkreduction/migrations"
 )
 
-var Version = "dev"
+var Version string
 
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
