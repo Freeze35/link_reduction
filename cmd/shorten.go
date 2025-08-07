@@ -3,26 +3,25 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"linkreduction/internal/config"
+	"linkreduction/internal/handler"
+	"linkreduction/internal/kafka"
+	"linkreduction/internal/prometheus"
 	"linkreduction/internal/repository/postgres"
 	"linkreduction/internal/repository/redis"
+	"linkreduction/internal/service"
+	"linkreduction/migrations"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"linkreduction/internal/handler"
-	"linkreduction/internal/kafka"
-	"linkreduction/internal/prometheus"
-	"linkreduction/internal/service"
-	"linkreduction/migrations"
 )
 
-var Version string
+var Version = "unknown"
 
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
