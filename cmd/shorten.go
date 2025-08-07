@@ -60,7 +60,7 @@ var shortenCmd = &cobra.Command{
 			}).Fatal("Ошибка загрузки конфигурационного файла")
 		}
 
-		logrus.Infof("Версия приложения,%v", cfg.Version)
+		logrus.Infof("Версия приложения:%v", cfg.Version)
 
 		migrations.RunMigrations(logger, &cfg)
 
