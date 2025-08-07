@@ -11,6 +11,7 @@ type Config struct {
 	Redis      Redis      `mapstructure:"redis"`
 	Kafka      Kafka      `mapstructure:"kafka"`
 	Prometheus Prometheus `mapstructure:"prometheus"`
+	Version    string     `mapstructure:"version"`
 }
 
 type DBC struct {

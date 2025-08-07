@@ -29,7 +29,6 @@ var shortenCmd = &cobra.Command{
 		logger := logrus.New()
 		logger.SetFormatter(&logrus.JSONFormatter{})
 		logger.SetLevel(logrus.InfoLevel)
-		logger.Infof("Версия приложения,%s", "v1.0.0")
 
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
@@ -60,6 +59,8 @@ var shortenCmd = &cobra.Command{
 				"error":     err,
 			}).Fatal("Ошибка загрузки конфигурационного файла")
 		}
+
+		logrus.Infof("Версия приложения,%v", cfg.Version)
 
 		migrations.RunMigrations(logger, &cfg)
 
