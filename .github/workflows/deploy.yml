@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - 'v*'
 
 jobs:
   build-and-deploy:
@@ -12,6 +14,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Get current git tag or fallback to dev
+        id: get_tag
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "Tag is $TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: '1.23' # Автоматически берёт версию из go.mod
+
+      - name: Build Go binary with version
+        run: |
+          go build -ldflags="-X main.Version=${{ env.TAG }}" -o app .
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -32,7 +50,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: freeze35/linkreduction:latest
+          tags: freeze35/linkreduction:${{ env.TAG }}
 
       - name: SSH to server and update containers
         uses: appleboy/ssh-action@v0.1.10
@@ -42,5 +60,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /home/vpn/linkreduction
+            export TAG=${{ env.TAG }}
             sudo docker-compose pull app
             sudo docker-compose up -d app
