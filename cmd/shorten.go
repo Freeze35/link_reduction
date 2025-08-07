@@ -21,14 +21,18 @@ import (
 	"syscall"
 )
 
-var Version = "v.1.0.0"
+var Version = "v1.0.0"
 
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
 	Short: "Run the link shortening server",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		fmt.Println("Версия приложения:", Version)
+		logger := logrus.New()
+		logger.SetFormatter(&logrus.JSONFormatter{})
+		logger.SetLevel(logrus.InfoLevel)
+		logger.Infof("Версия приложения,%s", Version)
+
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
 			filePath = "internal/config/config.yaml"
@@ -47,10 +51,6 @@ var shortenCmd = &cobra.Command{
 			fmt.Printf("Ошибка проверки файла: %v\n", err)
 			os.Exit(1)
 		}
-
-		logger := logrus.New()
-		logger.SetFormatter(&logrus.JSONFormatter{})
-		logger.SetLevel(logrus.InfoLevel)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
