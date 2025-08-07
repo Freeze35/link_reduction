@@ -22,10 +22,14 @@ import (
 	"linkreduction/migrations"
 )
 
+var Version = "dev"
+
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
 	Short: "Run the link shortening server",
 	Run: func(cmd *cobra.Command, args []string) {
+
+		fmt.Println("Версия приложения:", Version)
 
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
