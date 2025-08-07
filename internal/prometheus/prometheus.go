@@ -1,6 +1,11 @@
 package initprometheus
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"net/http"
+	"os"
+	"time"
+)
 
 // PrometheusMetrics - структура для хранения метрик Prometheus
 type PrometheusMetrics struct {
@@ -9,6 +14,18 @@ type PrometheusMetrics struct {
 }
 
 func InitPrometheus() *PrometheusMetrics {
+	promHost := os.Getenv("PROMETHEUS_HOST")
+	if promHost == "" {
+		promHost = "http://prometheus:9090" // default for docker-compose
+	}
+
+	client := http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(promHost + "/-/ready")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		// Prometheus недоступен — возвращаем nil
+		return nil
+	}
+
 	metrics := &PrometheusMetrics{
 		CreateShortLinkTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{

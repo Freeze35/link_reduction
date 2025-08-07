@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	"linkreduction/internal/config"
 	"linkreduction/internal/models"
 	"linkreduction/internal/service"
+	"log"
 	"strings"
 	"time"
 )
@@ -93,13 +95,12 @@ func (c *Consumer) ConsumeShortenURLs() error {
 		if err == nil {
 			break
 		}
-		c.logger.WithFields(logrus.Fields{
-			"attempt": i + 1,
-		}).Warn("Ошибка создания consumer group: ", err)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
-		return fmt.Errorf("ошибка создания consumer group после 10 попыток: %v", err)
+		//Отключение логировани sarama/kafka
+		sarama.Logger = log.New(ioutil.Discard, "", 0)
+		return fmt.Errorf("ошибка создания (kafka) consumer group после 10 попыток: %v", err)
 	}
 	defer consumerGroup.Close()
 

@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	DB     DBC    `mapstructure:"db"`
-	Server Server `mapstructure:"server"`
-	Redis  Redis  `mapstructure:"redis"`
-	Kafka  Kafka  `mapstructure:"kafka"`
+	DB         DBC        `mapstructure:"db"`
+	Server     Server     `mapstructure:"server"`
+	Redis      Redis      `mapstructure:"redis"`
+	Kafka      Kafka      `mapstructure:"kafka"`
+	Prometheus Prometheus `mapstructure:"prometheus"`
 }
 
 type DBC struct {
@@ -29,6 +30,10 @@ type Redis struct {
 
 type Kafka struct {
 	Brokers string `mapstructure:"brokers"`
+}
+
+type Prometheus struct {
+	URL string `mapstructure:"url"`
 }
 
 func LoadConfig(path string) (cfg Config, err error) {

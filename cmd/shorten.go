@@ -46,15 +46,6 @@ var shortenCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		data, err := os.ReadFile(absPath)
-		if err != nil {
-			fmt.Printf("Ошибка чтения файла: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Содержимое файла:")
-		fmt.Println(string(data))
-
 		logger := logrus.New()
 		logger.SetFormatter(&logrus.JSONFormatter{})
 		logger.SetLevel(logrus.InfoLevel)

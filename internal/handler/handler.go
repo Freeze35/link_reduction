@@ -83,7 +83,9 @@ func (h *Handler) checkOriginalURL(c *fiber.Ctx) (string, error) {
 
 	var req ShortenRequest
 	if err := c.BodyParser(&req); err != nil {
-		h.metrics.CreateShortLinkTotal.WithLabelValues("error", "json_parse").Inc()
+		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+			h.metrics.CreateShortLinkTotal.WithLabelValues("error", "json_parse").Inc()
+		}
 		return respondError(c, http.StatusBadRequest, fmt.Sprintf("некорректное тело JSON: %v", err))
 	}
 
@@ -116,8 +118,9 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 		messageBytes, err := json.Marshal(message)
 		if err != nil {
 
-			h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
-
+			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
+			}
 			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 				"error": fmt.Sprintf("ошибка сериализации: %v", err),
 			})
@@ -128,9 +131,9 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 			Value: sarama.ByteEncoder(messageBytes),
 		})
 		if err != nil {
-
-			h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
-
+			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
+			}
 			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 				"error": fmt.Sprintf("ошибка отправки в Kafka: %v", err),
 			})
@@ -139,17 +142,17 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 	} else {
 		// Если Kafka недоступна, вставляем напрямую
 		if err := h.service.InsertLink(ctx, originalURL, shortLink); err != nil {
-
-			h.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
-
+			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
+			}
 			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 				"error": "internal server error",
 			})
 		}
 	}
-
-	h.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
-
+	if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+		h.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
+	}
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
 		"shortURL": shortURL,
 	})
@@ -162,20 +165,25 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 
 	originalURL, err := h.service.GetOriginalURL(ctx, shortLink)
 	if err != nil {
-
-		h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()
+		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+			h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()
+		}
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "internal server error",
 		})
 	}
 	if originalURL == "" {
-
-		h.metrics.RedirectTotal.WithLabelValues("not_found", "none").Inc()
+		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+			h.metrics.RedirectTotal.WithLabelValues("not_found", "none").Inc()
+		}
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Короткая ссылка не найдена",
 		})
 	}
 
-	h.metrics.RedirectTotal.WithLabelValues("success", "none").Inc()
+	if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
+		h.metrics.RedirectTotal.WithLabelValues("success", "none").Inc()
+	}
+
 	return c.Redirect(originalURL, http.StatusMovedPermanently)
 }
