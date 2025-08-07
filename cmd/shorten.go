@@ -21,7 +21,7 @@ import (
 	"syscall"
 )
 
-var Version = "unknown"
+var Version = "v.1.0.0"
 
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
