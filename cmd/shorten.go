@@ -27,8 +27,6 @@ var shortenCmd = &cobra.Command{
 	Short: "Run the link shortening server",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		_ = ""
-
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
 			filePath = "internal/config/config.yaml"
