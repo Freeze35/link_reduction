@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"linkreduction/internal/kafka"
 	initprometheus "linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
+	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -26,16 +29,26 @@ type Bot struct {
 }
 
 func StartBot(ctx context.Context, cfg *config.Config, service *service.Service, producer sarama.SyncProducer, metrics *initprometheus.PrometheusMetrics) error {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+		Timeout: 10 * time.Second,
+	}
+
 	pref := tele.Settings{
 		Token:  cfg.BotToken,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		Client: httpClient, // ← подключаем кастомный http-клиент
 	}
 
 	newBot, err := tele.NewBot(pref)
 	if err != nil {
 		return err
 	}
-
+	log.Printf("bot is running")
 	b := &Bot{ctx, cfg, newBot, service, producer, metrics}
 	b.registerHandlers()
 	go newBot.Start() // не блокируем основную горутину
@@ -44,7 +57,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 
 func (b *Bot) registerHandlers() {
 	b.bot.Handle("/start", func(c tele.Context) error {
-		return c.Send("Привет! Отправь мне ссылку, и я её сокращу.")
+		return c.Send("Отправь мне ссылку, и я её сокращу.")
 	})
 
 	b.bot.Handle(tele.OnText, b.handleShortenRequest)
@@ -56,6 +69,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 	err := b.validateOriginalURL(originalURL)
 
 	if err != nil {
+		b.registerHandlers()
 		return c.Send("Ошибка: " + err.Error())
 	}
 
@@ -63,6 +77,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 
 	shortLink, err := b.service.ShortenURL(b.ctx, originalURL)
 	if err != nil {
+		b.registerHandlers()
 		return c.Send("internal server error")
 	}
 
@@ -77,6 +92,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
 			}
+			b.registerHandlers()
 			return c.Send("internal server error")
 		}
 
@@ -88,6 +104,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
 			}
+			b.registerHandlers()
 			return c.Send("internal server error")
 		}
 
@@ -97,13 +114,14 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
+			b.registerHandlers()
 			return c.Send("internal server error")
 		}
 	}
 	if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 		b.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
 	}
-
+	b.registerHandlers()
 	return c.Send(shortURL)
 }
 
