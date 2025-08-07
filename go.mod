@@ -1,6 +1,8 @@
 module linkreduction
 
-go 1.23
+go 1.23.0
+
+toolchain go1.24.5
 
 require (
 	github.com/IBM/sarama v1.45.2
