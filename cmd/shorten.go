@@ -29,6 +29,7 @@ var shortenCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		fmt.Println("Версия приложения:", Version)
+		fmt.Println("Версия приложения:", Version)
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
 			filePath = "internal/config/config.yaml"
