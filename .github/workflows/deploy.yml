@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - 'v1.0.0'
 
 jobs:
   build-and-deploy:
@@ -13,13 +15,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Restore config.yaml from secrets
+      - name: Get current git tag or fallback to dev
+        id: get_tag
         run: |
-          mkdir -p ./configs
-          echo "${{ secrets.CONFIG_YAML }}" > ./internal/config/config.yaml
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "Tag is $TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Build Go binary with version
+        run: |
+          go build -ldflags="-X main.Version=${{ env.TAG }}" -o app .
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -27,14 +37,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image with version tag
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: freeze35/linkreduction:latest
+          tags: freeze35/linkreduction:${{ env.TAG }}
 
-      - name: SSH to server and update containers
+      - name: SSH to server and update container with version tag
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SERVER_HOST }}
