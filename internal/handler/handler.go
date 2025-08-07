@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	_ "context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 )
 
 type Handler struct {
+	ctx      context.Context
 	service  *service.Service
 	metrics  *initprometheus.PrometheusMetrics
 	logger   *logrus.Logger
@@ -33,13 +35,15 @@ type ShortenMessage struct {
 	ShortLink   string `json:"short_link"`
 }
 
-func NewHandler(service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger, cfg *config.Config) (*Handler, error) {
+func NewHandler(ctx context.Context, service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger, cfg *config.Config, producer sarama.SyncProducer) (*Handler, error) {
 
 	return &Handler{
-		service: service,
-		metrics: metrics,
-		logger:  logger,
-		cfg:     cfg,
+		service:  service,
+		metrics:  metrics,
+		logger:   logger,
+		cfg:      cfg,
+		ctx:      ctx,
+		producer: producer,
 	}, nil
 }
 
@@ -102,8 +106,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	originalURL, err := h.checkOriginalURL(c)
 
-	ctx := c.Context()
-	shortLink, err := h.service.ShortenURL(ctx, originalURL)
+	shortLink, err := h.service.ShortenURL(h.ctx, originalURL)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -141,7 +144,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	} else {
 		// Если Kafka недоступна, вставляем напрямую
-		if err := h.service.InsertLink(ctx, originalURL, shortLink); err != nil {
+		if err := h.service.InsertLink(h.ctx, originalURL, shortLink); err != nil {
 			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
@@ -161,9 +164,8 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 func (h *Handler) redirect(c *fiber.Ctx) error {
 
 	shortLink := c.Params("key")
-	ctx := c.Context()
 
-	originalURL, err := h.service.GetOriginalURL(ctx, shortLink)
+	originalURL, err := h.service.GetOriginalURL(h.ctx, shortLink)
 	if err != nil {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()

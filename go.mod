@@ -14,6 +14,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
+	gopkg.in/telebot.v4 v4.0.0-beta.5
 )
 
 require (

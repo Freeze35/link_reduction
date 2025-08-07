@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"linkreduction/internal/bot"
 	"linkreduction/internal/config"
 	"linkreduction/internal/handler"
 	"linkreduction/internal/kafka"
@@ -106,13 +107,18 @@ var shortenCmd = &cobra.Command{
 		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer,
 			linkRepo, cache, logger, linkService, &cfg)
 
-		h, err := handler.NewHandler(linkService, metrics, logger, &cfg)
+		h, err := handler.NewHandler(ctx, linkService, metrics, logger, &cfg, kafkaProducer)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации обработчика")
 		}
 
 		app := fiber.New()
 		h.InitRoutes(app)
+
+		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics)
+		if errBot != nil {
+			logger.Infof("Ошибка инициализации telebot %s", errBot)
+		}
 
 		errChan := make(chan error, 1)
 
