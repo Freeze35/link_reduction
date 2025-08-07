@@ -100,7 +100,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	if err != nil {
 		//Отключение логировани sarama/kafka
 		sarama.Logger = log.New(ioutil.Discard, "", 0)
-		return fmt.Errorf("ошибка создания (kafka) consumer group после 10 попыток: %v", err)
+		return nil //fmt.Errorf("ошибка создания (kafka) consumer group после 10 попыток: %v", err)
 	}
 	defer consumerGroup.Close()
 

@@ -86,7 +86,7 @@ var shortenCmd = &cobra.Command{
 
 		kafkaProducer, err := handler.InitKafkaProducer(&cfg)
 		if err != nil {
-			logger.Info("Ошибка инициализации Kafka. Kafka недоступна")
+			//logger.Info("Ошибка инициализации Kafka. Kafka недоступна")
 		}
 		if kafkaProducer != nil {
 			defer func() {
