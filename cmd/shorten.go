@@ -21,8 +21,6 @@ import (
 	"syscall"
 )
 
-var Version = "v1.0.0"
-
 var shortenCmd = &cobra.Command{
 	Use:   "shorten",
 	Short: "Run the link shortening server",
@@ -31,7 +29,7 @@ var shortenCmd = &cobra.Command{
 		logger := logrus.New()
 		logger.SetFormatter(&logrus.JSONFormatter{})
 		logger.SetLevel(logrus.InfoLevel)
-		logger.Infof("Версия приложения,%s", Version)
+		logger.Infof("Версия приложения,%s", "v1.0.0")
 
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
