@@ -106,7 +106,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	originalURL, err := h.checkOriginalURL(c)
 
-	shortLink, err := h.service.ShortenURL(h.ctx, originalURL)
+	shortLink, err := h.service.ShortenURL(h.ctx, originalURL, baseURL)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),

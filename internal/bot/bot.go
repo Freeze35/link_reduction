@@ -65,7 +65,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 
 	baseURL := b.cfg.Server.BaseURL
 
-	shortLink, err := b.service.ShortenURL(b.ctx, originalURL)
+	shortLink, err := b.service.ShortenURL(b.ctx, originalURL, baseURL)
 	if err != nil {
 		b.registerHandlers()
 		return c.Send(err)

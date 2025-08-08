@@ -5,8 +5,8 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"linkreduction/internal/config"
 	"linkreduction/internal/models"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -17,7 +17,6 @@ type Service struct {
 	ctx   context.Context
 	repo  LinkRepo
 	cache LinkCache
-	cfg   config.Config
 }
 
 // NewLinkService создаёт новый экземпляр Service
@@ -43,9 +42,7 @@ func (s *Service) CleanupOldLinks() {
 }
 
 // ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
-func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, error) {
-
-	baseUrl := s.cfg.Server.BaseURL
+func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl string) (string, error) {
 
 	// Валидация URL
 	if err := validateURL(originalURL, baseUrl); err != nil {
@@ -170,6 +167,10 @@ func validateURL(originalURL, baseUrl string) error {
 	if err != nil {
 		return errors.New("некорректный BaseURL")
 	}
+
+	log.Print(parsed.Hostname())
+	log.Print(serverURL.Hostname())
+	log.Print(serverURL)
 
 	if parsed.Hostname() == serverURL.Hostname() {
 		return errors.New("это ссылка на наш сайт, ты можешь просто перейти по ней")
