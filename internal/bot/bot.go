@@ -36,7 +36,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 	pref := tele.Settings{
 		Token:  cfg.BotToken,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
-		Client: httpClient, // ← подключаем кастомный http-клиент
+		Client: httpClient,
 	}
 
 	newBot, err := tele.NewBot(pref)
@@ -46,7 +46,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 	log.Printf("bot is running")
 	b := &Bot{ctx, cfg, newBot, service, producer, metrics}
 	b.registerHandlers()
-	go newBot.Start() // не блокируем основную горутину
+	go newBot.Start()
 	return nil
 }
 
