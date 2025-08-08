@@ -102,12 +102,12 @@ var shortenCmd = &cobra.Command{
 		linkRepo := postgres.NewPostgresLinkRepository(db)
 		cache := redis.NewLink(redisClient, logger)
 
-		linkService := service.NewLinkService(linkRepo, cache)
+		linkService := service.NewLinkService(ctx, linkRepo, cache, kafkaProducer, metrics)
 
 		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer,
 			logger, linkService, &cfg)
 
-		h, err := handler.NewHandler(ctx, linkService, metrics, logger, &cfg, kafkaProducer)
+		h, err := handler.NewHandler(ctx, linkService, metrics, logger, &cfg)
 		if err != nil {
 			logger.Fatal("Ошибка инициализации обработчика")
 		}

@@ -24,8 +24,8 @@ type Service struct {
 }
 
 // NewLinkService создаёт новый экземпляр Service
-func NewLinkService(repo LinkRepo, cache LinkCache) *Service {
-	return &Service{repo: repo, cache: cache}
+func NewLinkService(ctx context.Context, repo LinkRepo, cache LinkCache, producer sarama.SyncProducer, metrics *initprometheus.PrometheusMetrics) *Service {
+	return &Service{ctx: ctx, repo: repo, cache: cache, producer: producer, metrics: metrics}
 }
 
 // CleanupOldLinks периодически удаляет записи старше 2 недель
@@ -186,6 +186,7 @@ func (s *Service) SendMessageToKafka(originalURL string, shortLink string) error
 		}
 
 	} else {
+
 		// Если Kafka недоступна, вставляем напрямую
 		if err := s.InsertLink(s.ctx, originalURL, shortLink); err != nil {
 			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {

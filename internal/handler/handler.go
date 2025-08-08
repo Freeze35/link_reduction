@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "context"
 	"fmt"
-	"github.com/IBM/sarama"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,12 +15,11 @@ import (
 )
 
 type Handler struct {
-	ctx      context.Context
-	service  *service.Service
-	metrics  *initprometheus.PrometheusMetrics
-	logger   *logrus.Logger
-	producer sarama.SyncProducer
-	cfg      *config.Config
+	ctx     context.Context
+	service *service.Service
+	metrics *initprometheus.PrometheusMetrics
+	logger  *logrus.Logger
+	cfg     *config.Config
 }
 
 type ShortenRequest struct {
@@ -33,15 +31,14 @@ type ShortenMessage struct {
 	ShortLink   string `json:"short_link"`
 }
 
-func NewHandler(ctx context.Context, service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger, cfg *config.Config, producer sarama.SyncProducer) (*Handler, error) {
+func NewHandler(ctx context.Context, service *service.Service, metrics *initprometheus.PrometheusMetrics, logger *logrus.Logger, cfg *config.Config) (*Handler, error) {
 
 	return &Handler{
-		service:  service,
-		metrics:  metrics,
-		logger:   logger,
-		cfg:      cfg,
-		ctx:      ctx,
-		producer: producer,
+		service: service,
+		metrics: metrics,
+		logger:  logger,
+		cfg:     cfg,
+		ctx:     ctx,
 	}, nil
 }
 
