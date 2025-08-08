@@ -133,6 +133,12 @@ func (b *Bot) validateOriginalURL(originalURL string) error {
 		return errors.New("URL обязателен")
 	}
 
+	baseURL := b.cfg.Server.BaseURL
+
+	if strings.Contains(originalURL, baseURL) {
+		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
+	}
+
 	// Ограничение по размеру в байтах
 	if len(originalURL) > maxURLLength {
 		return errors.New("URL превышает максимально допустимую длину 2048 байт")

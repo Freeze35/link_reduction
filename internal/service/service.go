@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
+	"linkreduction/internal/config"
 	"linkreduction/internal/models"
 	"net/url"
 	"strings"
@@ -15,6 +17,7 @@ type Service struct {
 	ctx   context.Context
 	repo  LinkRepo
 	cache LinkCache
+	cfg   config.Config
 }
 
 // NewLinkService создаёт новый экземпляр Service
@@ -42,7 +45,7 @@ func (s *Service) CleanupOldLinks() {
 // ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
 func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, error) {
 	// Валидация URL
-	if err := validateURL(originalURL); err != nil {
+	if err := validateURL(originalURL, s); err != nil {
 		return "", err
 	}
 
@@ -153,7 +156,14 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 	return nil
 }
 
-func validateURL(originalURL string) error {
+func validateURL(originalURL string, s *Service) error {
+
+	baseURL := s.cfg.Server.BaseURL
+
+	if strings.Contains(originalURL, baseURL) {
+		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
+	}
+
 	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
 		return fmt.Errorf("некорректный URL: должен начинаться с http:// или https://")
 	}
