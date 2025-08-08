@@ -78,7 +78,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 	shortLink, err := b.service.ShortenURL(b.ctx, originalURL)
 	if err != nil {
 		b.registerHandlers()
-		return c.Send("internal server error")
+		return c.Send("Ошибка при создании ссылки")
 	}
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
