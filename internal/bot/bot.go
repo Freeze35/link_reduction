@@ -68,7 +68,8 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 	shortLink, err := b.service.ShortenURL(b.ctx, originalURL, baseURL)
 	if err != nil {
 
-		return c.Send(err)
+		c.Send(err)
+		return fmt.Errorf("shorten URL: %w", err)
 	}
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
@@ -82,7 +83,8 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
 			}
-			return c.Send("kafka metric error")
+			c.Send("kafka metric error")
+			return fmt.Errorf("kafka metric error")
 		}
 
 		_, _, err = b.producer.SendMessage(&sarama.ProducerMessage{
@@ -93,7 +95,8 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
 			}
-			return c.Send("kafka send error")
+			c.Send("kafka send error")
+			return fmt.Errorf("kafka send error")
 		}
 
 	} else {
@@ -102,12 +105,14 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
-			return c.Send("unavailable kafka")
+			c.Send("unavailable kafka")
+			return fmt.Errorf("unavailable kafka")
 		}
 	}
 	if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 		b.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
 	}
 
-	return c.Send(shortURL)
+	c.Send(shortURL)
+	return nil
 }
