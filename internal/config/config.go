@@ -23,8 +23,7 @@ type DBC struct {
 }
 
 type Server struct {
-	BaseURL  string `mapstructure:"base_url"`
-	HostName string `mapstructure:"host_name"`
+	BaseURL string `mapstructure:"base_url"`
 }
 
 type Redis struct {

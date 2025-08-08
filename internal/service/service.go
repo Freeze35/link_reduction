@@ -45,9 +45,10 @@ func (s *Service) CleanupOldLinks() {
 // ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
 func (s *Service) ShortenURL(ctx context.Context, originalURL string) (string, error) {
 
-	hostName := s.cfg.Server.HostName
+	baseUrl := s.cfg.Server.BaseURL
+
 	// Валидация URL
-	if err := validateURL(originalURL, hostName); err != nil {
+	if err := validateURL(originalURL, baseUrl); err != nil {
 		return "", err
 	}
 
@@ -158,11 +159,21 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 	return nil
 }
 
-func validateURL(originalURL, hostName string) error {
+func validateURL(originalURL, baseUrl string) error {
 
-	/*if strings.Contains(originalURL, hostName) {
-		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
-	}*/
+	parsed, err := url.Parse(originalURL)
+	if err != nil {
+		return errors.New("некорректный URL")
+	}
+
+	serverURL, err := url.Parse(baseUrl)
+	if err != nil {
+		return errors.New("некорректный BaseURL")
+	}
+
+	if parsed.Hostname() == serverURL.Hostname() {
+		return errors.New("это ссылка на наш сайт, ты можешь просто перейти по ней")
+	}
 
 	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
 		return errors.New("некорректный URL: должен начинаться с http:// или https://")

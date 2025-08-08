@@ -5,10 +5,17 @@ db:
   migrations: "file:///app/migrations/"
 
 server:
-  base_url: "http://localhost:8080"
+  base_url: "https://linkreduction.mooo.com:8443"
 
 redis:
   url: "redis:6379"
 
 kafka:
   brokers: "kafka:9092"
+
+prometheus:
+  url: "http://prometheus:9090"
+
+bot_token: "7591313152:AAEB2wFEKKktC4Icvnx-OnlYKsP4dbXRu1c42"
+
+version: "v1.0.0"
