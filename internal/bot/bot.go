@@ -3,12 +3,10 @@ package bot
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"github.com/IBM/sarama"
 	tele "gopkg.in/telebot.v4"
 	"linkreduction/internal/config"
-	"linkreduction/internal/kafka"
 	initprometheus "linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
 	"log"
@@ -73,43 +71,10 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
-	// Если Kafka доступна, отправляем сообщение
-	if b.producer != nil {
-		message := &kafka.ShortenMessage{OriginalURL: originalURL, ShortLink: shortLink}
-		messageBytes, err := json.Marshal(message)
-		if err != nil {
-
-			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
-				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
-			}
-			c.Send("kafka metric error")
-			return fmt.Errorf("kafka metric error")
-		}
-
-		_, _, err = b.producer.SendMessage(&sarama.ProducerMessage{
-			Topic: kafka.ShortenURLsTopic,
-			Value: sarama.ByteEncoder(messageBytes),
-		})
-		if err != nil {
-			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
-				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
-			}
-			c.Send("kafka send error")
-			return fmt.Errorf("kafka send error")
-		}
-
-	} else {
-		// Если Kafka недоступна, вставляем напрямую
-		if err := b.service.InsertLink(b.ctx, originalURL, shortLink); err != nil {
-			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
-				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
-			}
-			c.Send("unavailable kafka")
-			return fmt.Errorf("unavailable kafka")
-		}
-	}
-	if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
-		b.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
+	err = b.service.SendMessageToKafka(originalURL, shortURL)
+	if err != nil {
+		c.Send(err.Error())
+		return err
 	}
 
 	c.Send(shortURL)

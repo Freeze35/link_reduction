@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"linkreduction/internal/config"
+	"linkreduction/internal/const"
 	"linkreduction/internal/models"
 	"linkreduction/internal/service"
 	"log"
@@ -16,18 +17,10 @@ import (
 	"time"
 )
 
-// ShortenMessage - структура для сообщений Kafka
-type ShortenMessage struct {
-	OriginalURL string `json:"original_url"`
-	ShortLink   string `json:"short_link"`
-}
-
 // Consumer - структура для обработки сообщений Kafka
 type Consumer struct {
 	ctx         context.Context
 	producer    sarama.SyncProducer
-	repo        service.LinkRepo
-	cache       service.LinkCache
 	logger      *logrus.Logger
 	linkService *service.Service
 	cfg         *config.Config
@@ -35,13 +28,10 @@ type Consumer struct {
 
 // NewConsumer создаёт новый экземпляр Consumer
 func NewConsumer(ctx context.Context, producer sarama.SyncProducer,
-	repo service.LinkRepo, cache service.LinkCache,
 	logger *logrus.Logger, linkService *service.Service, cfg *config.Config) *Consumer {
 	return &Consumer{
 		ctx:         ctx,
 		producer:    producer,
-		repo:        repo,
-		cache:       cache,
 		logger:      logger,
 		linkService: linkService,
 		cfg:         cfg,
@@ -91,7 +81,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	var consumerGroup sarama.ConsumerGroup
 	var err error
 	for i := 0; i < 10; i++ {
-		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, ShortenURLsGroup, sconfig)
+		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, message.ShortenURLsGroup, sconfig)
 		if err == nil {
 			break
 		}
@@ -105,7 +95,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	defer consumerGroup.Close()
 
 	for {
-		err := consumerGroup.Consume(c.ctx, []string{ShortenURLsTopic}, c)
+		err := consumerGroup.Consume(c.ctx, []string{message.ShortenURLsTopic}, c)
 		if err != nil {
 			c.logger.WithError(err).Error("Ошибка потребления сообщений Kafka")
 			time.Sleep(5 * time.Second)
@@ -114,17 +104,17 @@ func (c *Consumer) ConsumeShortenURLs() error {
 }
 
 // deserializeMessage десериализует сообщение Kafka в ShortenMessage
-func (c *Consumer) deserializeMessage(message *sarama.ConsumerMessage) (ShortenMessage, error) {
-	var shortenMsg ShortenMessage
-	if err := json.Unmarshal(message.Value, &shortenMsg); err != nil {
+func (c *Consumer) deserializeMessage(msg *sarama.ConsumerMessage) (message.ShortenMessage, error) {
+	var shortenMsg message.ShortenMessage
+	if err := json.Unmarshal(msg.Value, &shortenMsg); err != nil {
 		c.logger.WithError(err).Error("Ошибка при разборе сообщения Kafka")
-		return ShortenMessage{}, err
+		return message.ShortenMessage{}, err
 	}
 	return shortenMsg, nil
 }
 
 // sendToBatchChan отправляет сообщение в batchChan с учётом контекста
-func (c *Consumer) sendToBatchChan(ctx context.Context, batchChan chan<- models.LinkURL, msg ShortenMessage, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
+func (c *Consumer) sendToBatchChan(ctx context.Context, batchChan chan<- models.LinkURL, msg message.ShortenMessage, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
 	select {
 	case batchChan <- models.LinkURL{OriginalURL: msg.OriginalURL, ShortLink: msg.ShortLink}:
 		session.MarkMessage(message, "")

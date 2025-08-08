@@ -3,8 +3,12 @@ package service
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
+	"github.com/IBM/sarama"
+	"linkreduction/internal/const"
 	"linkreduction/internal/models"
+	initprometheus "linkreduction/internal/prometheus"
 	"net/url"
 	"strings"
 	"time"
@@ -12,9 +16,11 @@ import (
 
 // Service - сервис для работы с сокращением ссылок
 type Service struct {
-	ctx   context.Context
-	repo  LinkRepo
-	cache LinkCache
+	ctx      context.Context
+	repo     LinkRepo
+	cache    LinkCache
+	producer sarama.SyncProducer
+	metrics  *initprometheus.PrometheusMetrics
 }
 
 // NewLinkService создаёт новый экземпляр Service
@@ -150,6 +156,47 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 		if err := s.cache.SetShortLink(ctx, link.OriginalURL, link.ShortLink, time.Minute*10); err != nil {
 			return fmt.Errorf("ошибка записи в Redis (shorten): %v,%v", link.OriginalURL, err)
 		}
+	}
+	return nil
+}
+
+func (s *Service) SendMessageToKafka(originalURL string, shortLink string) error {
+	// Если Kafka доступна, отправляем сообщение
+	if s.producer != nil {
+		msg := &message.ShortenMessage{OriginalURL: originalURL, ShortLink: shortLink}
+		messageBytes, err := json.Marshal(msg)
+		if err != nil {
+
+			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
+				s.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
+			}
+
+			return fmt.Errorf("kafka metric error")
+		}
+
+		_, _, err = s.producer.SendMessage(&sarama.ProducerMessage{
+			Topic: message.ShortenURLsTopic,
+			Value: sarama.ByteEncoder(messageBytes),
+		})
+		if err != nil {
+			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
+				s.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
+			}
+			return fmt.Errorf("kafka send error")
+		}
+
+	} else {
+		// Если Kafka недоступна, вставляем напрямую
+		if err := s.InsertLink(s.ctx, originalURL, shortLink); err != nil {
+			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
+				s.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
+			}
+			return fmt.Errorf("unavailable kafka")
+
+		}
+	}
+	if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
+		s.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
 	}
 	return nil
 }

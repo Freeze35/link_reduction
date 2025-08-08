@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	_ "context"
-	"encoding/json"
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"linkreduction/internal/config"
-	"linkreduction/internal/kafka"
 	"linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
 	"net/http"
@@ -115,47 +113,13 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
-	// Если Kafka доступна, отправляем сообщение
-	if h.producer != nil {
-		message := &ShortenMessage{OriginalURL: originalURL, ShortLink: shortLink}
-		messageBytes, err := json.Marshal(message)
-		if err != nil {
-
-			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
-				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
-			}
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("ошибка сериализации: %v", err),
-			})
-		}
-
-		_, _, err = h.producer.SendMessage(&sarama.ProducerMessage{
-			Topic: kafka.ShortenURLsTopic,
-			Value: sarama.ByteEncoder(messageBytes),
+	err = h.service.SendMessageToKafka(originalURL, shortURL)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
 		})
-		if err != nil {
-			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
-				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
-			}
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("ошибка отправки в Kafka: %v", err),
-			})
-		}
+	}
 
-	} else {
-		// Если Kafka недоступна, вставляем напрямую
-		if err := h.service.InsertLink(h.ctx, originalURL, shortLink); err != nil {
-			if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
-				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
-			}
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"error": "internal server error insert",
-			})
-		}
-	}
-	if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
-		h.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
-	}
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
 		"shortURL": shortURL,
 	})

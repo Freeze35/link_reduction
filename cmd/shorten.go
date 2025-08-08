@@ -105,7 +105,7 @@ var shortenCmd = &cobra.Command{
 		linkService := service.NewLinkService(linkRepo, cache)
 
 		kafkaConsumer := kafka.NewConsumer(ctx, kafkaProducer,
-			linkRepo, cache, logger, linkService, &cfg)
+			logger, linkService, &cfg)
 
 		h, err := handler.NewHandler(ctx, linkService, metrics, logger, &cfg, kafkaProducer)
 		if err != nil {
