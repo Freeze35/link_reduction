@@ -20,7 +20,6 @@ func TestNewLinkService(t *testing.T) {
 	assert.Equal(t, mockCache, svc.cache)
 }
 
-// Возврат короткой ссылки из кэша
 func TestShortenURL_ReturnsFromCache(t *testing.T) {
 	originalURL := "https://example.com"
 	expectedShortLink := "cached123"
@@ -355,7 +354,7 @@ func TestService_InsertBatch(t *testing.T) {
 			},
 			mockBehavior: func(repo *mocks.LinkRepo, cache *mocks.LinkCache) {
 				repo.On("InsertBatch", mock.Anything, mock.AnythingOfType("[]models.LinkURL")).
-					Return(int64(2), nil) // <- int64 здесь!
+					Return(nil) // <- int64 здесь!
 				cache.On("SetShortLink", mock.Anything, "https://example.com/1", "short1", mock.Anything).Return(nil)
 				cache.On("SetShortLink", mock.Anything, "https://example.com/2", "short2", mock.Anything).Return(nil)
 			},
@@ -368,7 +367,7 @@ func TestService_InsertBatch(t *testing.T) {
 			},
 			mockBehavior: func(repo *mocks.LinkRepo, cache *mocks.LinkCache) {
 				repo.On("InsertBatch", mock.Anything, mock.Anything).
-					Return(int64(0), fmt.Errorf("insert batch error"))
+					Return(fmt.Errorf("insert batch error"))
 			},
 			expectError: true,
 		},
@@ -378,7 +377,7 @@ func TestService_InsertBatch(t *testing.T) {
 				{OriginalURL: "https://example.com/1", ShortLink: "short1"},
 			},
 			mockBehavior: func(repo *mocks.LinkRepo, cache *mocks.LinkCache) {
-				repo.On("InsertBatch", mock.Anything, mock.Anything).Return(int64(1), nil)
+				repo.On("InsertBatch", mock.Anything, mock.Anything).Return(nil)
 				cache.On("SetShortLink", mock.Anything, "https://example.com/1", "short1", mock.Anything).
 					Return(fmt.Errorf("cache error"))
 			},

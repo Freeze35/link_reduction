@@ -44,8 +44,6 @@ func RedisConnect(ctx context.Context, cfg *config.Config) (*redis.Client, error
 	return redisClient, nil
 }
 
-// GetKafkaBrokers получает список Kafka брокеров из переменной окружения KAFKA_BROKERS.
-// Возвращает срез строк с адресами брокеров или ошибку, если переменная не задана или содержит недопустимые значения.
 func GetKafkaBrokers(cfg *config.Config) ([]string, error) {
 	kafkaEnv := cfg.Kafka.Brokers
 	if kafkaEnv == "" {
@@ -66,8 +64,6 @@ func GetKafkaBrokers(cfg *config.Config) ([]string, error) {
 	return cleaned, nil
 }
 
-// NewKafkaProducerConfig создаёт и настраивает конфигурацию для Kafka продюсера.
-// Устанавливаются параметры подтверждения, количество попыток и задержка между ними.
 func NewKafkaProducerConfig() *sarama.Config {
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
@@ -77,8 +73,6 @@ func NewKafkaProducerConfig() *sarama.Config {
 	return cfg
 }
 
-// ConnectKafkaProducer пытается подключиться к Kafka брокерам с помощью переданной конфигурации.
-// Делает до 10 попыток с задержкой в 2 секунды между ними. Возвращает SyncProducer или ошибку.
 func ConnectKafkaProducer(brokers []string, cfg *sarama.Config) (sarama.SyncProducer, error) {
 	for i := 0; i < 10; i++ {
 		producer, err := sarama.NewSyncProducer(brokers, cfg)
@@ -92,7 +86,6 @@ func ConnectKafkaProducer(brokers []string, cfg *sarama.Config) (sarama.SyncProd
 	return nil, fmt.Errorf("не удалось подключиться к Kafka после 10 попыток")
 }
 
-// InitKafkaProducer объединяет шаги инициализации Kafka продюсера:
 func InitKafkaProducer(cfg *config.Config) (sarama.SyncProducer, error) {
 
 	brokers, err := GetKafkaBrokers(cfg)
@@ -100,9 +93,9 @@ func InitKafkaProducer(cfg *config.Config) (sarama.SyncProducer, error) {
 		return nil, err
 	}
 
-	config := NewKafkaProducerConfig()
+	configKafka := NewKafkaProducerConfig()
 
-	producer, err := ConnectKafkaProducer(brokers, config)
+	producer, err := ConnectKafkaProducer(brokers, configKafka)
 	if err != nil {
 		return nil, err
 	}

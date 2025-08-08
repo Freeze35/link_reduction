@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-// Service - сервис для работы с сокращением ссылок
 type Service struct {
 	ctx      context.Context
 	repo     LinkRepo
@@ -24,12 +23,10 @@ type Service struct {
 	metrics  *initprometheus.PrometheusMetrics
 }
 
-// NewLinkService создаёт новый экземпляр Service
 func NewLinkService(ctx context.Context, repo LinkRepo, cache LinkCache, producer sarama.SyncProducer, metrics *initprometheus.PrometheusMetrics) *Service {
 	return &Service{ctx: ctx, repo: repo, cache: cache, producer: producer, metrics: metrics}
 }
 
-// CleanupOldLinks периодически удаляет записи старше 2 недель
 func (s *Service) CleanupOldLinks(logger *logrus.Logger) {
 
 	ticker := time.NewTicker(2 * time.Hour)
@@ -47,15 +44,11 @@ func (s *Service) CleanupOldLinks(logger *logrus.Logger) {
 	}
 }
 
-// ShortenURL проверяет URL, ищет в кэше/БД или генерирует новый ключ
 func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl string) (string, error) {
 
-	// Валидация URL
 	if err := validateURL(originalURL, baseUrl); err != nil {
 		return "", err
 	}
-
-	// Проверка в кэше
 
 	if cachedShortLink, err := s.cache.GetShortLink(ctx, originalURL); err != nil {
 		return "", fmt.Errorf("ошибка чтения из кэша: %v", err)
@@ -63,7 +56,6 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl st
 		return cachedShortLink, nil
 	}
 
-	// Проверка в БД
 	shortLink, err := s.repo.FindByOriginalURL(ctx, originalURL)
 	if err != nil {
 		return "", fmt.Errorf("ошибка проверки URL в базе данных: %w", err)
@@ -75,7 +67,6 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl st
 		return shortLink, nil
 	}
 
-	// Генерация нового ключа
 	for i := 0; i < 3; i++ {
 		inputURL := originalURL
 		if i > 0 {
@@ -85,7 +76,7 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl st
 
 		if existing, err := s.repo.FindByShortLink(ctx, shortLink); err != nil {
 			return "", fmt.Errorf("ошибка проверки ключа: %v", err)
-		} else if existing == "" { // Ключ уникален
+		} else if existing == "" {
 			return shortLink, nil
 		}
 
@@ -94,7 +85,6 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl st
 		}
 	}
 
-	// Недостижимый код (оставлен для совместимости, но можно удалить)
 	return "", fmt.Errorf("не удалось сгенерировать короткую ссылку")
 }
 
@@ -148,12 +138,12 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 		return fmt.Errorf("длина батча нулевая")
 	}
 
-	rowsAffected, err := s.repo.InsertBatch(ctx, batch)
+	err := s.repo.InsertBatch(ctx, batch)
 	if err != nil {
 		return fmt.Errorf("ошибка при внедрение батча %v", err)
 	}
 
-	for _, link := range batch[:rowsAffected] {
+	for _, link := range batch {
 		if err := s.cache.SetShortLink(ctx, link.OriginalURL, link.ShortLink, time.Minute*10); err != nil {
 			return fmt.Errorf("ошибка записи в Redis (shorten): %v,%v", link.OriginalURL, err)
 		}

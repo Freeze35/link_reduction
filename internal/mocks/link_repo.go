@@ -23,31 +23,21 @@ func (_m *LinkRepo) EXPECT() *LinkRepo_Expecter {
 }
 
 // DeleteOldLinks provides a mock function with given fields: ctx, threshold
-func (_m *LinkRepo) DeleteOldLinks(ctx context.Context, threshold string) (int64, error) {
+func (_m *LinkRepo) DeleteOldLinks(ctx context.Context, threshold string) error {
 	ret := _m.Called(ctx, threshold)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteOldLinks")
 	}
 
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (int64, error)); ok {
-		return rf(ctx, threshold)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
 		r0 = rf(ctx, threshold)
 	} else {
-		r0 = ret.Get(0).(int64)
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, threshold)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // LinkRepo_DeleteOldLinks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOldLinks'
@@ -69,12 +59,12 @@ func (_c *LinkRepo_DeleteOldLinks_Call) Run(run func(ctx context.Context, thresh
 	return _c
 }
 
-func (_c *LinkRepo_DeleteOldLinks_Call) Return(_a0 int64, _a1 error) *LinkRepo_DeleteOldLinks_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *LinkRepo_DeleteOldLinks_Call) Return(_a0 error) *LinkRepo_DeleteOldLinks_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *LinkRepo_DeleteOldLinks_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *LinkRepo_DeleteOldLinks_Call {
+func (_c *LinkRepo_DeleteOldLinks_Call) RunAndReturn(run func(context.Context, string) error) *LinkRepo_DeleteOldLinks_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -242,31 +232,21 @@ func (_c *LinkRepo_Insert_Call) RunAndReturn(run func(context.Context, string, s
 }
 
 // InsertBatch provides a mock function with given fields: ctx, links
-func (_m *LinkRepo) InsertBatch(ctx context.Context, links []models.LinkURL) (int64, error) {
+func (_m *LinkRepo) InsertBatch(ctx context.Context, links []models.LinkURL) error {
 	ret := _m.Called(ctx, links)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertBatch")
 	}
 
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []models.LinkURL) (int64, error)); ok {
-		return rf(ctx, links)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, []models.LinkURL) int64); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.LinkURL) error); ok {
 		r0 = rf(ctx, links)
 	} else {
-		r0 = ret.Get(0).(int64)
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []models.LinkURL) error); ok {
-		r1 = rf(ctx, links)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // LinkRepo_InsertBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertBatch'
@@ -288,12 +268,12 @@ func (_c *LinkRepo_InsertBatch_Call) Run(run func(ctx context.Context, links []m
 	return _c
 }
 
-func (_c *LinkRepo_InsertBatch_Call) Return(_a0 int64, _a1 error) *LinkRepo_InsertBatch_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *LinkRepo_InsertBatch_Call) Return(_a0 error) *LinkRepo_InsertBatch_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *LinkRepo_InsertBatch_Call) RunAndReturn(run func(context.Context, []models.LinkURL) (int64, error)) *LinkRepo_InsertBatch_Call {
+func (_c *LinkRepo_InsertBatch_Call) RunAndReturn(run func(context.Context, []models.LinkURL) error) *LinkRepo_InsertBatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

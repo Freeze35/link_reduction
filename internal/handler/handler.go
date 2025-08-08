@@ -48,7 +48,6 @@ func (h *Handler) InitRoutes(app *fiber.App) {
 	app.Get("/:key", h.redirect)
 }
 
-// restrictBodySize проверяет, что размер тела запроса не превышает заданный лимит
 func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
 	bodySize := len(c.Request().Body())
 	if bodySize > maxBodySize {
@@ -62,7 +61,7 @@ func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
 	return nil
 }
 
-func (h *Handler) checkOriginalURL(c *fiber.Ctx, logger *logrus.Logger) (string, error) {
+func (h *Handler) checkOriginalURL(c *fiber.Ctx) (string, error) {
 	const maxBodySize = 2048
 
 	if err := h.restrictBodySize(c, maxBodySize); err != nil {
@@ -93,7 +92,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	baseURL := h.cfg.Server.BaseURL
 
-	originalURL, err := h.checkOriginalURL(c, h.logger)
+	originalURL, err := h.checkOriginalURL(c)
 	if err != nil {
 		return respondError(c, true, h.logger, http.StatusBadRequest, err.Error())
 	}

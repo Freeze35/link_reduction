@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
+	"io"
 	"linkreduction/internal/config"
 	"linkreduction/internal/const"
 	"linkreduction/internal/models"
@@ -17,49 +17,44 @@ import (
 	"time"
 )
 
-// Consumer - структура для обработки сообщений Kafka
 type Consumer struct {
 	ctx         context.Context
 	producer    sarama.SyncProducer
 	logger      *logrus.Logger
 	linkService *service.Service
 	cfg         *config.Config
+	batchChan   chan models.LinkURL
 }
 
-// NewConsumer создаёт новый экземпляр Consumer
 func NewConsumer(ctx context.Context, producer sarama.SyncProducer,
 	logger *logrus.Logger, linkService *service.Service, cfg *config.Config) *Consumer {
+
+	batchChan := make(chan models.LinkURL)
+
 	return &Consumer{
 		ctx:         ctx,
 		producer:    producer,
 		logger:      logger,
 		linkService: linkService,
 		cfg:         cfg,
+		batchChan:   batchChan,
 	}
 }
 
-// ConsumeClaim реализует интерфейс sarama.ConsumerGroupHandler
 func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	batchSize := 50
+	batchTimeout := 10 * time.Second
 
-	batchSize := 50                  // Максимальный размер батча
-	batchTimeout := 10 * time.Second // Максимальное время ожидания для батча
+	go c.processBatchInsert(c.ctx, c.batchChan, batchSize, batchTimeout)
 
-	batchChan := make(chan models.LinkURL, batchSize)
-	defer close(batchChan)
-	// Запускаем горутину для пакетной вставки
-	go c.processBatchInsert(c.ctx, batchChan, batchSize, batchTimeout)
-
-	// Обрабатываем сообщения Kafka
-	err := c.processKafkaMessages(session, claim, batchChan)
+	err := c.processKafkaMessages(session, claim, c.batchChan)
 	if err != nil {
-		close(batchChan)
 		return err
 	}
 
 	return nil
 }
 
-// ConsumeShortenURLs обрабатывает сообщения из Kafka
 func (c *Consumer) ConsumeShortenURLs() error {
 	kafkaEnv := c.cfg.Kafka.Brokers
 	kafkaBrokers := strings.Split(kafkaEnv, ",")
@@ -75,7 +70,6 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	}
 
 	sconfig := sarama.NewConfig()
-	sconfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	sconfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	var consumerGroup sarama.ConsumerGroup
@@ -88,22 +82,30 @@ func (c *Consumer) ConsumeShortenURLs() error {
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
-		//Отключение логировани sarama/kafka
-		sarama.Logger = log.New(ioutil.Discard, "", 0)
-		return nil //fmt.Errorf("ошибка создания (kafka) consumer group после 10 попыток: %v", err)
+		//sarama logger off
+		sarama.Logger = log.New(io.Discard, "", 0)
+		return nil
 	}
-	defer consumerGroup.Close()
 
 	for {
-		err := consumerGroup.Consume(c.ctx, []string{message.ShortenURLsTopic}, c)
-		if err != nil {
-			c.logger.WithError(err).Error("Ошибка потребления сообщений Kafka")
-			time.Sleep(5 * time.Second)
+		select {
+		case <-c.ctx.Done():
+			c.logger.Info("Остановка потребления сообщений Kafka")
+			err := consumerGroup.Close()
+			if err != nil {
+				c.logger.WithError(err).Error("Ошибка при закрытии Kafka consumer group")
+			}
+			return nil
+		default:
+			err := consumerGroup.Consume(c.ctx, []string{message.ShortenURLsTopic}, c)
+			if err != nil {
+				c.logger.Error("Ошибка потребления сообщений Kafka")
+				time.Sleep(5 * time.Second)
+			}
 		}
 	}
 }
 
-// deserializeMessage десериализует сообщение Kafka в ShortenMessage
 func (c *Consumer) deserializeMessage(msg *sarama.ConsumerMessage) (message.ShortenMessage, error) {
 	var shortenMsg message.ShortenMessage
 	if err := json.Unmarshal(msg.Value, &shortenMsg); err != nil {
@@ -113,23 +115,6 @@ func (c *Consumer) deserializeMessage(msg *sarama.ConsumerMessage) (message.Shor
 	return shortenMsg, nil
 }
 
-// sendToBatchChan отправляет сообщение в batchChan с учётом контекста
-func (c *Consumer) sendToBatchChan(ctx context.Context, batchChan chan<- models.LinkURL, msg message.ShortenMessage, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
-	select {
-	case batchChan <- models.LinkURL{OriginalURL: msg.OriginalURL, ShortLink: msg.ShortLink}:
-		session.MarkMessage(message, "")
-		c.logger.WithFields(logrus.Fields{
-			"original_url": msg.OriginalURL,
-			"short_link":   msg.ShortLink,
-		}).Info("Отправлено сообщение в batchChan")
-		return nil
-	case <-ctx.Done():
-		c.logger.Info("Контекст отменён, прекращение отправки в batchChan")
-		return ctx.Err()
-	}
-}
-
-// processBatchInsert выполняет пакетную вставку сообщений из batchChan
 func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan models.LinkURL, batchSize int, batchTimeout time.Duration) {
 	ticker := time.NewTicker(batchTimeout)
 	defer ticker.Stop()
@@ -138,7 +123,7 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 	for {
 		select {
 		case msg, ok := <-batchChan:
-			if !ok { // Канал закрыт
+			if !ok {
 				if len(batch) > 0 {
 					if err := c.linkService.InsertBatch(ctx, batch); err != nil {
 						c.logger.WithFields(logrus.Fields{
@@ -183,26 +168,38 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 	}
 }
 
-// processKafkaMessages обрабатывает сообщения из Kafka и отправляет их в batchChan
 func (c *Consumer) processKafkaMessages(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim, batchChan chan<- models.LinkURL) error {
-	for message := range claim.Messages() {
-		shortenMsg, err := c.deserializeMessage(message)
+	for consumerMessage := range claim.Messages() {
+		shortenMsg, err := c.deserializeMessage(consumerMessage)
 		if err != nil {
 			continue
 		}
-		if err := c.sendToBatchChan(c.ctx, batchChan, shortenMsg, session, message); err != nil {
-			return err
+
+		select {
+		case batchChan <- models.LinkURL{OriginalURL: shortenMsg.OriginalURL, ShortLink: shortenMsg.ShortLink}:
+			session.MarkMessage(consumerMessage, "")
+			c.logger.WithFields(logrus.Fields{
+				"original_url": shortenMsg.OriginalURL,
+				"short_link":   shortenMsg.ShortLink,
+			}).Info("Отправлено сообщение в batchChan")
+			return nil
+		case <-c.ctx.Done():
+			c.logger.Info("Контекст отменён, прекращение отправки в batchChan")
+			return c.ctx.Err()
 		}
+
 	}
 	return nil
 }
 
-// Setup вызывается при инициализации consumer group
 func (c *Consumer) Setup(_ sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// Cleanup вызывается при завершении consumer group
 func (c *Consumer) Cleanup(_ sarama.ConsumerGroupSession) error {
 	return nil
+}
+
+func (c *Consumer) CloseKafka() {
+	close(c.batchChan)
 }

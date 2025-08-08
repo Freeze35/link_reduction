@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// PrometheusMetrics - структура для хранения метрик Prometheus
 type PrometheusMetrics struct {
 	CreateShortLinkTotal *prometheus.CounterVec
 	RedirectTotal        *prometheus.CounterVec
@@ -22,7 +21,6 @@ func InitPrometheus() *PrometheusMetrics {
 	client := http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(promHost + "/-/ready")
 	if err != nil || resp.StatusCode != http.StatusOK {
-		// Prometheus недоступен — возвращаем nil
 		return nil
 	}
 

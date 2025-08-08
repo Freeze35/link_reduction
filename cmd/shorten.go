@@ -119,14 +119,12 @@ var shortenCmd = &cobra.Command{
 			logger.Infof("Ошибка инициализации telebot %s", errBot)
 		}
 
-		if kafkaConsumer != nil {
-			go func() {
-				err := kafkaConsumer.ConsumeShortenURLs()
-				if err != nil {
-					logger.Errorf(err.Error())
-				}
-			}()
-		}
+		go func() {
+			err := kafkaConsumer.ConsumeShortenURLs()
+			if err != nil {
+				logger.Errorf(err.Error())
+			}
+		}()
 
 		//
 		go linkService.CleanupOldLinks(logger)
@@ -141,13 +139,12 @@ var shortenCmd = &cobra.Command{
 			}
 		}()
 
-		select {
-		case sig := <-quit:
-			logger.WithFields(logrus.Fields{
-				"component": "shorten",
-				"signal":    sig,
-			}).Info("Получен системный сигнал")
-		}
+		sig := <-quit
+		logger.WithFields(logrus.Fields{
+			"component": "shorten",
+			"signal":    sig,
+		}).Info("Получен системный сигнал")
+		kafkaConsumer.CloseKafka()
 
 		if err := app.Shutdown(); err != nil {
 			logger.WithFields(logrus.Fields{
