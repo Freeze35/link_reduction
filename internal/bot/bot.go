@@ -67,7 +67,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 
 	shortLink, err := b.service.ShortenURL(b.ctx, originalURL, baseURL)
 	if err != nil {
-		b.registerHandlers()
+
 		return c.Send(err)
 	}
 
@@ -82,7 +82,6 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
 			}
-			b.registerHandlers()
 			return c.Send("kafka metric error")
 		}
 
@@ -94,7 +93,6 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
 			}
-			b.registerHandlers()
 			return c.Send("kafka send error")
 		}
 
@@ -104,47 +102,12 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 			if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
-			b.registerHandlers()
 			return c.Send("unavailable kafka")
 		}
 	}
 	if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
 		b.metrics.CreateShortLinkTotal.WithLabelValues("success", "none").Inc()
 	}
-	b.registerHandlers()
+
 	return c.Send(shortURL)
 }
-
-/*func (b *Bot) validateOriginalURL(originalURL string) error {
-
-	maxURLLength := 2048
-
-	if originalURL == "" {
-		return errors.New("URL обязателен")
-	}
-
-	hostName := b.cfg.Server.HostName
-
-	if strings.Contains(originalURL, hostName) {
-		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
-	}
-
-	// Ограничение по размеру в байтах
-	if len(originalURL) > maxURLLength {
-		return errors.New("URL превышает максимально допустимую длину 2048 байт")
-	}
-
-	// Проверка схемы
-	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
-		return errors.New("URL должен начинаться с http:// или https://")
-	}
-
-	// Проверка валидности URL
-	_, err := url.ParseRequestURI(originalURL)
-	if err != nil {
-		return errors.New("некорректный URL")
-	}
-
-	return nil
-}
-*/
