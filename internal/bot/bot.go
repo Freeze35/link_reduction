@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/IBM/sarama"
 	tele "gopkg.in/telebot.v4"
 	"linkreduction/internal/config"
 	initprometheus "linkreduction/internal/prometheus"
@@ -13,14 +14,15 @@ import (
 )
 
 type Bot struct {
-	ctx     context.Context
-	cfg     *config.Config
-	bot     *tele.Bot
-	service *service.Service
-	metrics *initprometheus.PrometheusMetrics
+	ctx      context.Context
+	cfg      *config.Config
+	bot      *tele.Bot
+	service  *service.Service
+	producer sarama.SyncProducer
+	metrics  *initprometheus.PrometheusMetrics
 }
 
-func StartBot(ctx context.Context, cfg *config.Config, service *service.Service, metrics *initprometheus.PrometheusMetrics) error {
+func StartBot(ctx context.Context, cfg *config.Config, service *service.Service, producer sarama.SyncProducer, metrics *initprometheus.PrometheusMetrics) error {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -41,7 +43,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 		return err
 	}
 
-	b := &Bot{ctx, cfg, newBot, service, metrics}
+	b := &Bot{ctx, cfg, newBot, service, producer, metrics}
 	b.registerHandlers()
 	go newBot.Start()
 	return nil
@@ -49,11 +51,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 
 func (b *Bot) registerHandlers() {
 	b.bot.Handle("/start", func(c tele.Context) error {
-		return c.Send(
-			"Я помогу тебе превратить любую длинную ссылку в короткую " +
-				"🔗\n\nПросто отправь мне свой URL, и я создам сокращённый адрес, который можно использовать где угодно — " +
-				"в соцсетях, мессенджерах, на сайтах. " +
-				"При переходе по нему пользователь будет перенаправлен на исходную страницу.")
+		return c.Send("Я помогу тебе превратить любую длинную ссылку в короткую 🔗\n\nПросто отправь мне свой URL, и я создам сокращённый адрес, который можно использовать где угодно — в соцсетях, мессенджерах, на сайтах. При переходе по нему пользователь будет перенаправлен на исходную страницу.")
 	})
 
 	b.bot.Handle(tele.OnText, b.handleShortenRequest)

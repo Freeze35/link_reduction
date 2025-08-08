@@ -114,30 +114,19 @@ var shortenCmd = &cobra.Command{
 		app := fiber.New()
 		h.InitRoutes(app)
 
-		errBot := bot.StartBot(ctx, &cfg, linkService, metrics)
+		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics)
 		if errBot != nil {
 			logger.Infof("Ошибка инициализации telebot %s", errBot)
 		}
 
-		errChan := make(chan error, 1)
-		defer close(errChan)
-
 		if kafkaConsumer != nil {
 			go func() {
-				errChan <- kafkaConsumer.ConsumeShortenURLs()
+				err := kafkaConsumer.ConsumeShortenURLs()
+				if err != nil {
+					logger.Errorf(err.Error())
+				}
 			}()
 		}
-
-		go func() {
-			select {
-			case err := <-errChan:
-				if err != nil {
-					logger.Infof("Kafka consumer завершился с ошибкой: %v", err)
-					// Можно попытаться перезапустить consumer или завершить процесс
-					// С учётом того что kafka может отсутствовать. Это возможно проигнорировать
-				}
-			}
-		}()
 
 		//
 		go linkService.CleanupOldLinks()
@@ -145,7 +134,14 @@ var shortenCmd = &cobra.Command{
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-		logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
+		serverErr := make(chan error, 1)
+
+		go func() {
+			logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
+			if err := app.Listen(":8080"); err != nil {
+				serverErr <- err
+			}
+		}()
 
 		select {
 		case sig := <-quit:
