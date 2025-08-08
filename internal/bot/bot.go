@@ -133,9 +133,9 @@ func (b *Bot) validateOriginalURL(originalURL string) error {
 		return errors.New("URL обязателен")
 	}
 
-	baseURL := b.cfg.Server.BaseURL
+	hostName := b.cfg.Server.HostName
 
-	if strings.Contains(originalURL, baseURL) {
+	if strings.Contains(originalURL, hostName) {
 		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
 	}
 

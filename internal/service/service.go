@@ -158,14 +158,14 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 
 func validateURL(originalURL string, s *Service) error {
 
-	baseURL := s.cfg.Server.BaseURL
+	hostName := s.cfg.Server.HostName
 
-	if strings.Contains(originalURL, baseURL) {
+	if strings.Contains(originalURL, hostName) {
 		return errors.New("это ссылка на наш сайт ты можешь просто перейти по ней")
 	}
 
 	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
-		return fmt.Errorf("некорректный URL: должен начинаться с http:// или https://")
+		return errors.New("некорректный URL: должен начинаться с http:// или https://")
 	}
 	parsedURL, err := url.Parse(originalURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
