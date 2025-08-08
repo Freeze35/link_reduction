@@ -15,7 +15,6 @@ import (
 	"linkreduction/internal/repository/redis"
 	"linkreduction/internal/service"
 	"linkreduction/migrations"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -115,12 +114,13 @@ var shortenCmd = &cobra.Command{
 		app := fiber.New()
 		h.InitRoutes(app)
 
-		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics)
+		errBot := bot.StartBot(ctx, &cfg, linkService, metrics)
 		if errBot != nil {
 			logger.Infof("Ошибка инициализации telebot %s", errBot)
 		}
 
 		errChan := make(chan error, 1)
+		defer close(errChan)
 
 		if kafkaConsumer != nil {
 			go func() {
@@ -132,7 +132,7 @@ var shortenCmd = &cobra.Command{
 			select {
 			case err := <-errChan:
 				if err != nil {
-					log.Printf("Kafka consumer завершился с ошибкой: %v", err)
+					logger.Infof("Kafka consumer завершился с ошибкой: %v", err)
 					// Можно попытаться перезапустить consumer или завершить процесс
 					// С учётом того что kafka может отсутствовать. Это возможно проигнорировать
 				}
@@ -145,14 +145,7 @@ var shortenCmd = &cobra.Command{
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-		serverErr := make(chan error, 1)
-
-		go func() {
-			logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
-			if err := app.Listen(":8080"); err != nil {
-				serverErr <- err
-			}
-		}()
+		logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
 
 		select {
 		case sig := <-quit:
@@ -160,14 +153,8 @@ var shortenCmd = &cobra.Command{
 				"component": "shorten",
 				"signal":    sig,
 			}).Info("Получен системный сигнал")
-		case err := <-serverErr:
-			logger.WithFields(logrus.Fields{
-				"component": "shorten",
-				"error":     err,
-			}).Error("Ошибка сервера")
 		}
 
-		logger.WithField("component", "shorten").Info("Остановка сервера...")
 		if err := app.Shutdown(); err != nil {
 			logger.WithFields(logrus.Fields{
 				"component": "shorten",
