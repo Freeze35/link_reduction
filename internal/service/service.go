@@ -160,7 +160,7 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 	return nil
 }
 
-func (s *Service) SendMessageToKafka(originalURL string, shortLink string) error {
+func (s *Service) SendMessageToDB(originalURL string, shortLink string) error {
 	// Если Kafka доступна, отправляем сообщение
 	if s.producer != nil {
 		msg := &message.ShortenMessage{OriginalURL: originalURL, ShortLink: shortLink}
@@ -192,7 +192,7 @@ func (s *Service) SendMessageToKafka(originalURL string, shortLink string) error
 			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
 				s.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
-			return fmt.Errorf("unavailable kafka")
+			return nil //fmt.Errorf("unavailable kafka")
 
 		}
 	}

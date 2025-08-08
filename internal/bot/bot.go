@@ -71,7 +71,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
-	err = b.service.SendMessageToKafka(originalURL, shortURL)
+	err = b.service.SendMessageToDB(originalURL, shortURL)
 	if err != nil {
 		c.Send(err.Error())
 		return err

@@ -110,7 +110,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
-	err = h.service.SendMessageToKafka(originalURL, shortURL)
+	err = h.service.SendMessageToDB(originalURL, shortURL)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
