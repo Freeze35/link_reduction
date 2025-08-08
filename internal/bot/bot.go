@@ -9,7 +9,6 @@ import (
 	"linkreduction/internal/config"
 	initprometheus "linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
-	"log"
 	"net/http"
 	"time"
 )
@@ -43,7 +42,7 @@ func StartBot(ctx context.Context, cfg *config.Config, service *service.Service,
 	if err != nil {
 		return err
 	}
-	log.Printf("bot is running")
+
 	b := &Bot{ctx, cfg, newBot, service, producer, metrics}
 	b.registerHandlers()
 	go newBot.Start()

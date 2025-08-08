@@ -15,7 +15,6 @@ import (
 	"linkreduction/internal/repository/redis"
 	"linkreduction/internal/service"
 	"linkreduction/migrations"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -120,24 +119,14 @@ var shortenCmd = &cobra.Command{
 			logger.Infof("Ошибка инициализации telebot %s", errBot)
 		}
 
-		errChan := make(chan error, 1)
-
 		if kafkaConsumer != nil {
 			go func() {
-				errChan <- kafkaConsumer.ConsumeShortenURLs()
+				err := kafkaConsumer.ConsumeShortenURLs()
+				if err != nil {
+					logger.Errorf(err.Error())
+				}
 			}()
 		}
-
-		go func() {
-			select {
-			case err := <-errChan:
-				if err != nil {
-					log.Printf("Kafka consumer завершился с ошибкой: %v", err)
-					// Можно попытаться перезапустить consumer или завершить процесс
-					// С учётом того что kafka может отсутствовать. Это возможно проигнорировать
-				}
-			}
-		}()
 
 		//
 		go linkService.CleanupOldLinks()
@@ -160,14 +149,8 @@ var shortenCmd = &cobra.Command{
 				"component": "shorten",
 				"signal":    sig,
 			}).Info("Получен системный сигнал")
-		case err := <-serverErr:
-			logger.WithFields(logrus.Fields{
-				"component": "shorten",
-				"error":     err,
-			}).Error("Ошибка сервера")
 		}
 
-		logger.WithField("component", "shorten").Info("Остановка сервера...")
 		if err := app.Shutdown(); err != nil {
 			logger.WithFields(logrus.Fields{
 				"component": "shorten",
