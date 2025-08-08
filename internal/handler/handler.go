@@ -57,27 +57,21 @@ func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
 			"client_ip":  c.IP(),
 			"request_id": c.Get("X-Request-ID"),
 		}).Warn("Слишком большой размер тела запроса")
-
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": fmt.Sprintf("размер тела запроса (%d байт) превышает лимит (%d байт)", bodySize, maxBodySize),
-		})
+		return respondError(c, false, h.logger, http.StatusBadRequest, fmt.Sprintf("размер тела запроса (%d байт) превышает лимит (%d байт)", bodySize, maxBodySize))
 	}
 	return nil
 }
 
-func respondError(c *fiber.Ctx, status int, msg string) (string, error) {
-	return "", c.Status(status).JSON(fiber.Map{"error": msg})
-}
-
-func (h *Handler) checkOriginalURL(c *fiber.Ctx) (string, error) {
+func (h *Handler) checkOriginalURL(c *fiber.Ctx, logger *logrus.Logger) (string, error) {
 	const maxBodySize = 2048
 
 	if err := h.restrictBodySize(c, maxBodySize); err != nil {
+
 		return "", err
 	}
 
 	if c.Get("Content-Type") != "application/json" {
-		return respondError(c, http.StatusBadRequest, "неверный Content-Type != application/json")
+		return "", fmt.Errorf("неверный Content-Type != application/json")
 	}
 
 	var req ShortenRequest
@@ -85,11 +79,11 @@ func (h *Handler) checkOriginalURL(c *fiber.Ctx) (string, error) {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.CreateShortLinkTotal.WithLabelValues("error", "json_parse").Inc()
 		}
-		return respondError(c, http.StatusBadRequest, fmt.Sprintf("некорректное тело JSON: %v", err))
+		return "", fmt.Errorf("некорректное тело JSON: %v", err)
 	}
 
 	if req.URL == "" {
-		return respondError(c, http.StatusBadRequest, "URL обязателен")
+		return "", fmt.Errorf("URL обязателен")
 	}
 
 	return req.URL, nil
@@ -99,22 +93,21 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 	baseURL := h.cfg.Server.BaseURL
 
-	originalURL, err := h.checkOriginalURL(c)
+	originalURL, err := h.checkOriginalURL(c, h.logger)
+	if err != nil {
+		return respondError(c, true, h.logger, http.StatusBadRequest, err.Error())
+	}
 
 	shortLink, err := h.service.ShortenURL(h.ctx, originalURL, baseURL)
 	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return respondError(c, true, h.logger, http.StatusBadRequest, err.Error())
 	}
 
 	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
 	err = h.service.SendMessageToDB(originalURL, shortURL)
 	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return respondError(c, false, h.logger, http.StatusBadRequest, err.Error())
 	}
 
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
@@ -131,17 +124,13 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()
 		}
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-			"error": "internal server error get original URL",
-		})
+		return respondError(c, false, h.logger, http.StatusBadRequest, "internal server error get original URL")
 	}
 	if originalURL == "" {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.RedirectTotal.WithLabelValues("not_found", "none").Inc()
 		}
-		return c.Status(http.StatusNotFound).JSON(fiber.Map{
-			"error": "Короткая ссылка не найдена",
-		})
+		return respondError(c, false, h.logger, http.StatusBadRequest, "Короткая ссылка не найдена")
 	}
 
 	if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
@@ -149,4 +138,12 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect(originalURL, http.StatusMovedPermanently)
+}
+
+func respondError(c *fiber.Ctx, show bool, logger *logrus.Logger, status int, msg string) error {
+	logger.Error(msg)
+	if show {
+		return c.Status(status).JSON(fiber.Map{"error": msg})
+	}
+	return c.Status(status).JSON(fiber.Map{"error": "internal server error"})
 }

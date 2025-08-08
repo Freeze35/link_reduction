@@ -134,12 +134,10 @@ var shortenCmd = &cobra.Command{
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-		serverErr := make(chan error, 1)
-
 		go func() {
 			logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
 			if err := app.Listen(":8080"); err != nil {
-				serverErr <- err
+				logger.Errorf(err.Error())
 			}
 		}()
 
