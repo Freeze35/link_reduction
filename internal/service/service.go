@@ -3,10 +3,8 @@ package service
 import (
 	"context"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"linkreduction/internal/models"
-	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -160,24 +158,20 @@ func validateURL(originalURL, baseUrl string) error {
 
 	parsed, err := url.Parse(originalURL)
 	if err != nil {
-		return errors.New("некорректный URL")
+		return fmt.Errorf("некорректный URL")
 	}
 
 	serverURL, err := url.Parse(baseUrl)
 	if err != nil {
-		return errors.New("некорректный BaseURL")
+		return fmt.Errorf("некорректный BaseURL")
 	}
 
-	log.Print(parsed.Hostname())
-	log.Print(serverURL.Hostname())
-	log.Print(serverURL)
-
 	if parsed.Hostname() == serverURL.Hostname() {
-		return errors.New("это ссылка на наш сайт, ты можешь просто перейти по ней")
+		return fmt.Errorf("это ссылка на наш сайт, ты можешь просто перейти по ней")
 	}
 
 	if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
-		return errors.New("некорректный URL: должен начинаться с http:// или https://")
+		return fmt.Errorf("некорректный URL: должен начинаться с http:// или https://")
 	}
 	parsedURL, err := url.Parse(originalURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
