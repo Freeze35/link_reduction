@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
 	tele "gopkg.in/telebot.v4"
@@ -14,8 +13,6 @@ import (
 	"linkreduction/internal/service"
 	"log"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 )
 
@@ -66,13 +63,6 @@ func (b *Bot) registerHandlers() {
 func (b *Bot) handleShortenRequest(c tele.Context) error {
 	originalURL := c.Text()
 
-	err := b.validateOriginalURL(originalURL)
-
-	if err != nil {
-		b.registerHandlers()
-		return c.Send("Ошибка: " + err.Error())
-	}
-
 	baseURL := b.cfg.Server.BaseURL
 
 	shortLink, err := b.service.ShortenURL(b.ctx, originalURL)
@@ -93,7 +83,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_serialization").Inc()
 			}
 			b.registerHandlers()
-			return c.Send("internal server error")
+			return c.Send("kafka metric error")
 		}
 
 		_, _, err = b.producer.SendMessage(&sarama.ProducerMessage{
@@ -105,7 +95,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "kafka_send").Inc()
 			}
 			b.registerHandlers()
-			return c.Send("internal server error")
+			return c.Send("kafka send error")
 		}
 
 	} else {
@@ -115,7 +105,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 				b.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
 			b.registerHandlers()
-			return c.Send("internal server error")
+			return c.Send("unavailable kafka")
 		}
 	}
 	if b.metrics != nil && b.metrics.CreateShortLinkTotal != nil {
@@ -125,7 +115,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 	return c.Send(shortURL)
 }
 
-func (b *Bot) validateOriginalURL(originalURL string) error {
+/*func (b *Bot) validateOriginalURL(originalURL string) error {
 
 	maxURLLength := 2048
 
@@ -157,3 +147,4 @@ func (b *Bot) validateOriginalURL(originalURL string) error {
 
 	return nil
 }
+*/

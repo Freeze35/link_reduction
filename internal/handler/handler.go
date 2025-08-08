@@ -149,7 +149,7 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 				h.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
 			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"error": "internal server error",
+				"error": "internal server error insert",
 			})
 		}
 	}
@@ -171,7 +171,7 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 			h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()
 		}
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-			"error": "internal server error",
+			"error": "internal server error get original URL",
 		})
 	}
 	if originalURL == "" {
