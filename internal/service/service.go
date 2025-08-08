@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/IBM/sarama"
+	"github.com/sirupsen/logrus"
 	"linkreduction/internal/const"
 	"linkreduction/internal/models"
 	initprometheus "linkreduction/internal/prometheus"
@@ -29,7 +30,7 @@ func NewLinkService(ctx context.Context, repo LinkRepo, cache LinkCache, produce
 }
 
 // CleanupOldLinks периодически удаляет записи старше 2 недель
-func (s *Service) CleanupOldLinks() {
+func (s *Service) CleanupOldLinks(logger *logrus.Logger) {
 
 	ticker := time.NewTicker(2 * time.Hour)
 	defer ticker.Stop()
@@ -37,8 +38,9 @@ func (s *Service) CleanupOldLinks() {
 	for {
 		select {
 		case <-ticker.C:
-			_, err := s.repo.DeleteOldLinks(s.ctx, "2 weeks")
+			err := s.repo.DeleteOldLinks(s.ctx, "2 weeks")
 			if err != nil {
+				logger.Error(err)
 				continue
 			}
 		}
@@ -148,7 +150,6 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 
 	rowsAffected, err := s.repo.InsertBatch(ctx, batch)
 	if err != nil {
-		/*for range batch {// Здесь можно добавить метрику для ошибок, если нужно}*/
 		return fmt.Errorf("ошибка при внедрение батча %v", err)
 	}
 

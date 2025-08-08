@@ -103,13 +103,10 @@ func (r *Link) InsertBatch(ctx context.Context, links []models.LinkURL) (int64, 
 }
 
 // DeleteOldLinks удаляет ссылки старше указанного порога
-func (r *Link) DeleteOldLinks(ctx context.Context, threshold string) (int64, error) {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM links WHERE created_at < NOW() - INTERVAL $1", threshold)
+func (r *Link) DeleteOldLinks(ctx context.Context, threshold string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM links WHERE created_at < NOW() - INTERVAL $1", threshold)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected > 0 {
-	}
-	return rowsAffected, nil
+	return nil
 }

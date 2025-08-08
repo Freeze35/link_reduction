@@ -14,7 +14,7 @@ type LinkRepo interface {
 	FindByShortLink(ctx context.Context, shortLink string) (string, error)
 	Insert(ctx context.Context, originalURL, shortLink string) error
 	InsertBatch(ctx context.Context, links []models.LinkURL) (int64, error)
-	DeleteOldLinks(ctx context.Context, threshold string) (int64, error)
+	DeleteOldLinks(ctx context.Context, threshold string) error
 }
 
 // LinkCache - интерфейс для работы с кэшем

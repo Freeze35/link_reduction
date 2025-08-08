@@ -129,7 +129,7 @@ var shortenCmd = &cobra.Command{
 		}
 
 		//
-		go linkService.CleanupOldLinks()
+		go linkService.CleanupOldLinks(logger)
 
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
