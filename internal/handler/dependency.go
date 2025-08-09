@@ -77,7 +77,6 @@ func ConnectKafkaProducer(brokers []string, cfg *sarama.Config) (sarama.SyncProd
 	for i := 0; i < 10; i++ {
 		producer, err := sarama.NewSyncProducer(brokers, cfg)
 		if err == nil {
-
 			return producer, nil
 		}
 

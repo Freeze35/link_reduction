@@ -114,7 +114,7 @@ var shortenCmd = &cobra.Command{
 		app := fiber.New()
 		h.InitRoutes(app)
 
-		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics)
+		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics, logger)
 		if errBot != nil {
 			logger.Infof("Ошибка инициализации telebot %s", errBot)
 		}

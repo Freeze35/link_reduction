@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/sirupsen/logrus"
@@ -119,6 +118,9 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 	ticker := time.NewTicker(batchTimeout)
 	defer ticker.Stop()
 
+	childCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	batch := make([]models.LinkURL, 0, batchSize)
 	for {
 		select {
@@ -156,7 +158,8 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 			}
 		case <-ctx.Done():
 			if len(batch) > 0 {
-				if err := c.linkService.InsertBatch(ctx, batch); err != nil && !errors.Is(err, context.Canceled) {
+
+				if err := c.linkService.InsertBatch(childCtx, batch); err != nil {
 					c.logger.WithFields(logrus.Fields{
 						"batch_size": len(batch),
 					}).Error("Ошибка при вставке батча при завершении: ", err)

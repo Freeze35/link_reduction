@@ -56,7 +56,9 @@ func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
 			"client_ip":  c.IP(),
 			"request_id": c.Get("X-Request-ID"),
 		}).Warn("Слишком большой размер тела запроса")
-		return respondError(c, false, h.logger, http.StatusBadRequest, fmt.Sprintf("размер тела запроса (%d байт) превышает лимит (%d байт)", bodySize, maxBodySize))
+		return respondError(c, false, h.logger, http.StatusBadRequest,
+			fmt.Sprintf("размер тела запроса (%d байт) "+
+				"превышает лимит (%d байт)", bodySize, maxBodySize))
 	}
 	return nil
 }

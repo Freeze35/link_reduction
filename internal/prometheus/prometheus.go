@@ -18,7 +18,7 @@ func InitPrometheus() *PrometheusMetrics {
 		promHost = "http://prometheus:9090" // default for docker-compose
 	}
 
-	client := http.Client{Timeout: 2 * time.Second}
+	client := http.Client{Timeout: 4 * time.Second}
 	resp, err := client.Get(promHost + "/-/ready")
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil

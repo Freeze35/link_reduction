@@ -20,11 +20,8 @@ func NewLink(client *redis.Client, logger *logrus.Logger) *Link {
 func (c *Link) GetShortLink(ctx context.Context, originalURL string) (string, error) {
 	cacheKey := "shorten:" + originalURL
 	result, err := c.client.Get(ctx, cacheKey).Result()
-	if errors.Is(err, redis.Nil) {
+	if errors.Is(err, redis.Nil) || err != nil {
 		return "", nil
-	}
-	if err != nil {
-		return "", err
 	}
 	return result, nil
 }
@@ -40,11 +37,8 @@ func (c *Link) SetShortLink(ctx context.Context, originalURL, shortLink string, 
 func (c *Link) GetOriginalURL(ctx context.Context, shortLink string) (string, error) {
 	cacheKey := "redirect:" + shortLink
 	result, err := c.client.Get(ctx, cacheKey).Result()
-	if errors.Is(err, redis.Nil) {
+	if errors.Is(err, redis.Nil) || err != nil {
 		return "", nil
-	}
-	if err != nil {
-		return "", err
 	}
 	return result, nil
 }
