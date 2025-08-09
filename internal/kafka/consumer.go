@@ -46,12 +46,8 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 	go c.processBatchInsert(c.ctx, c.batchChan, batchSize, batchTimeout)
 
-	err := c.processKafkaMessages(session, claim, c.batchChan)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	err := c.processKafkaMessages(session, claim)
+	return err
 }
 
 func (c *Consumer) ConsumeShortenURLs() error {
@@ -118,9 +114,6 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 	ticker := time.NewTicker(batchTimeout)
 	defer ticker.Stop()
 
-	childCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	batch := make([]models.LinkURL, 0, batchSize)
 	for {
 		select {
@@ -159,7 +152,7 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 		case <-ctx.Done():
 			if len(batch) > 0 {
 
-				if err := c.linkService.InsertBatch(childCtx, batch); err != nil {
+				if err := c.linkService.InsertBatch(context.Background(), batch); err != nil {
 					c.logger.WithFields(logrus.Fields{
 						"batch_size": len(batch),
 					}).Error("Ошибка при вставке батча при завершении: ", err)
@@ -171,7 +164,7 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 	}
 }
 
-func (c *Consumer) processKafkaMessages(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim, batchChan chan<- models.LinkURL) error {
+func (c *Consumer) processKafkaMessages(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for consumerMessage := range claim.Messages() {
 		shortenMsg, err := c.deserializeMessage(consumerMessage)
 		if err != nil {
@@ -179,7 +172,7 @@ func (c *Consumer) processKafkaMessages(session sarama.ConsumerGroupSession, cla
 		}
 
 		select {
-		case batchChan <- models.LinkURL{OriginalURL: shortenMsg.OriginalURL, ShortLink: shortenMsg.ShortLink}:
+		case c.batchChan <- models.LinkURL{OriginalURL: shortenMsg.OriginalURL, ShortLink: shortenMsg.ShortLink}:
 			session.MarkMessage(consumerMessage, "")
 			c.logger.WithFields(logrus.Fields{
 				"original_url": shortenMsg.OriginalURL,
