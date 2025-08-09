@@ -25,6 +25,12 @@ type Consumer struct {
 	batchChan   chan models.LinkURL
 }
 
+const (
+	batchSize                 = 50
+	batchTimeout              = 10 * time.Second
+	attemptCreateConsumeGroup = 10
+)
+
 func NewConsumer(ctx context.Context, producer sarama.SyncProducer,
 	logger *logrus.Logger, linkService *service.Service, cfg *config.Config) *Consumer {
 
@@ -41,8 +47,6 @@ func NewConsumer(ctx context.Context, producer sarama.SyncProducer,
 }
 
 func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	batchSize := 50
-	batchTimeout := 10 * time.Second
 
 	go c.processBatchInsert(c.ctx, c.batchChan, batchSize, batchTimeout)
 
@@ -69,7 +73,7 @@ func (c *Consumer) ConsumeShortenURLs() error {
 
 	var consumerGroup sarama.ConsumerGroup
 	var err error
-	for i := 0; i < 10; i++ {
+	for i := 0; i < attemptCreateConsumeGroup; i++ {
 		consumerGroup, err = sarama.NewConsumerGroup(kafkaBrokers, message.ShortenURLsGroup, sconfig)
 		if err == nil {
 			break
@@ -101,13 +105,9 @@ func (c *Consumer) ConsumeShortenURLs() error {
 	}
 }
 
-func (c *Consumer) deserializeMessage(msg *sarama.ConsumerMessage) (message.ShortenMessage, error) {
-	var shortenMsg message.ShortenMessage
-	if err := json.Unmarshal(msg.Value, &shortenMsg); err != nil {
-		c.logger.WithError(err).Error("Ошибка при разборе сообщения Kafka")
-		return message.ShortenMessage{}, err
-	}
-	return shortenMsg, nil
+func (c *Consumer) deserializeMessage(msg *sarama.ConsumerMessage) (ret message.ShortenMessage, err error) {
+	err = json.Unmarshal(msg.Value, &ret)
+	return
 }
 
 func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan models.LinkURL, batchSize int, batchTimeout time.Duration) {
@@ -151,7 +151,6 @@ func (c *Consumer) processBatchInsert(ctx context.Context, batchChan <-chan mode
 			}
 		case <-ctx.Done():
 			if len(batch) > 0 {
-
 				if err := c.linkService.InsertBatch(context.Background(), batch); err != nil {
 					c.logger.WithFields(logrus.Fields{
 						"batch_size": len(batch),

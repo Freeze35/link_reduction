@@ -116,7 +116,7 @@ var shortenCmd = &cobra.Command{
 
 		errBot := bot.StartBot(ctx, &cfg, linkService, kafkaProducer, metrics, logger)
 		if errBot != nil {
-			logger.Infof("Ошибка инициализации telebot %s", errBot)
+			logger.Error("Ошибка инициализации telebot %s", errBot)
 		}
 
 		go func() {
@@ -132,26 +132,12 @@ var shortenCmd = &cobra.Command{
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-		go func() {
-			logger.WithField("component", "shorten").Info("Сервер запущен на http://localhost:8080")
-			if err := app.Listen(":8080"); err != nil {
-				logger.Errorf(err.Error())
-			}
-		}()
+		go logger.Fatal(app.Listen(":8080"))
 
-		sig := <-quit
-		logger.WithFields(logrus.Fields{
-			"component": "shorten",
-			"signal":    sig,
-		}).Info("Получен системный сигнал")
+		<-quit
 		kafkaConsumer.CloseKafka()
 
-		if err := app.Shutdown(); err != nil {
-			logger.WithFields(logrus.Fields{
-				"component": "shorten",
-				"error":     err,
-			}).Error("Ошибка при завершении сервера")
-		}
+		app.Shutdown()
 
 		logger.WithField("component", "shorten").Info("Сервер успешно остановлен")
 	},
