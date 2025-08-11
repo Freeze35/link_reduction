@@ -125,7 +125,7 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.RedirectTotal.WithLabelValues("error", "db_query").Inc()
 		}
-		return respondError(c, false, h.logger, http.StatusBadRequest, "internal server error get original URL")
+		return respondError(c, false, h.logger, http.StatusBadRequest, fmt.Sprintf("internal server error get original URL: %v", err))
 	}
 	if originalURL == "" {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
