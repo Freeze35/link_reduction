@@ -106,14 +106,17 @@ func (s *Service) InsertLink(ctx context.Context, originalURL, shortLink string)
 func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string, error) {
 	// Проверка в кэше
 	if cachedURL, err := s.cache.GetOriginalURL(ctx, shortLink); err != nil {
+		log.Print("cachedURL: ", shortLink)
 		return "", fmt.Errorf("ошибка чтения из кэша: %v", err)
 	} else if cachedURL != "" {
+		log.Print("cachedURLEmpty: ", shortLink)
 		return cachedURL, nil
 	}
 
 	// Проверка в БД
 	originalURL, err := s.repo.FindByShortLink(ctx, shortLink)
 	if err != nil {
+		log.Print("originalURL: ", shortLink)
 		return "", fmt.Errorf("ошибка базы данных: %v", err)
 	}
 	if originalURL == "" {
@@ -123,6 +126,7 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string,
 
 	// Кэширование результата
 	if err := s.cache.SetOriginalURL(ctx, shortLink, originalURL, 10*60); err != nil {
+		log.Print("SetOriginalURL")
 		return "", fmt.Errorf("ошибка записи в кэш: %v", err)
 	}
 

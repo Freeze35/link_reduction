@@ -131,7 +131,7 @@ func (h *Handler) redirect(c *fiber.Ctx) error {
 		if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
 			h.metrics.RedirectTotal.WithLabelValues("not_found", "none").Inc()
 		}
-		return respondError(c, false, h.logger, http.StatusBadRequest, fmt.Sprintf("Короткая ссылка не найдена:%v", err))
+		return respondError(c, false, h.logger, http.StatusBadRequest, "Короткая ссылка не найдена")
 	}
 
 	if h.metrics != nil && h.metrics.CreateShortLinkTotal != nil {
