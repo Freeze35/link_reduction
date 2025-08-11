@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"linkreduction/internal/models"
-	"log"
 	"slices"
 	"strings"
 )
@@ -31,10 +30,7 @@ func (r *Link) FindByOriginalURL(ctx context.Context, originalURL string) (strin
 func (r *Link) FindByShortLink(ctx context.Context, shortLink string) (string, error) {
 	var originalURL string
 	err := r.db.QueryRowContext(ctx, "SELECT link FROM links WHERE short_link = $1", shortLink).Scan(&originalURL)
-	log.Print("originalURLPG: ", originalURL)
-	log.Print("originalURLPG: ", shortLink)
 	if errors.Is(err, sql.ErrNoRows) {
-
 		return "", nil
 	}
 	return originalURL, err
@@ -75,7 +71,6 @@ func (r *Link) InsertBatch(ctx context.Context, links []models.LinkURL) error {
 	return nil
 }
 
-// DeleteOldLinks удаляет ссылки старше указанного порога
 func (r *Link) DeleteOldLinks(ctx context.Context, threshold string) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM links WHERE created_at < NOW() - INTERVAL $1", threshold)
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"linkreduction/internal/const"
 	"linkreduction/internal/models"
 	initprometheus "linkreduction/internal/prometheus"
-	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -89,7 +88,6 @@ func (s *Service) ShortenURL(ctx context.Context, originalURL string, baseUrl st
 	return "", fmt.Errorf("не удалось сгенерировать короткую ссылку")
 }
 
-// InsertLink вставляет новую ссылку в хранилище
 func (s *Service) InsertLink(ctx context.Context, originalURL, shortLink string) error {
 	err := s.repo.Insert(ctx, originalURL, shortLink)
 	if err != nil {
@@ -102,31 +100,23 @@ func (s *Service) InsertLink(ctx context.Context, originalURL, shortLink string)
 	return nil
 }
 
-// GetOriginalURL получает оригинальный URL по короткой ссылке
 func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string, error) {
-	// Проверка в кэше
+
 	if cachedURL, err := s.cache.GetOriginalURL(ctx, shortLink); err != nil {
-		log.Print("cachedURL: ", shortLink)
 		return "", fmt.Errorf("ошибка чтения из кэша: %v", err)
 	} else if cachedURL != "" {
-		log.Print("cachedURLEmpty: ", shortLink)
 		return cachedURL, nil
 	}
 
-	// Проверка в БД
 	originalURL, err := s.repo.FindByShortLink(ctx, shortLink)
 	if err != nil {
-		log.Print("originalURL: ", shortLink)
 		return "", fmt.Errorf("ошибка базы данных: %v", err)
 	}
 	if originalURL == "" {
-		log.Print("return empty url")
 		return "", nil
 	}
 
-	// Кэширование результата
 	if err := s.cache.SetOriginalURL(ctx, shortLink, originalURL, 10*60); err != nil {
-		log.Print("SetOriginalURL")
 		return "", fmt.Errorf("ошибка записи в кэш: %v", err)
 	}
 
@@ -138,7 +128,6 @@ func generateShortLink(originalURL string) string {
 	return fmt.Sprintf("%x", hash)[:6]
 }
 
-// InsertBatch выполняет пакетную вставку в PostgreSQL
 func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error {
 	if len(batch) == 0 {
 		return fmt.Errorf("длина батча нулевая")
@@ -158,7 +147,7 @@ func (s *Service) InsertBatch(ctx context.Context, batch []models.LinkURL) error
 }
 
 func (s *Service) SendMessageToDB(originalURL string, shortLink string) error {
-	// Если Kafka доступна, отправляем сообщение
+
 	if s.producer != nil {
 		msg := &message.ShortenMessage{OriginalURL: originalURL, ShortLink: shortLink}
 		messageBytes, err := json.Marshal(msg)
@@ -184,13 +173,11 @@ func (s *Service) SendMessageToDB(originalURL string, shortLink string) error {
 
 	} else {
 
-		// Если Kafka недоступна, вставляем напрямую
 		if err := s.InsertLink(s.ctx, originalURL, shortLink); err != nil {
 			if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {
 				s.metrics.CreateShortLinkTotal.WithLabelValues("error", "db_insert").Inc()
 			}
-			return nil //fmt.Errorf("unavailable kafka")
-
+			return nil
 		}
 	}
 	if s.metrics != nil && s.metrics.CreateShortLinkTotal != nil {

@@ -41,7 +41,6 @@ func InitPrometheus() *PrometheusMetrics {
 		),
 	}
 
-	// Регистрация метрик
 	prometheus.MustRegister(metrics.CreateShortLinkTotal)
 	prometheus.MustRegister(metrics.RedirectTotal)
 
