@@ -47,6 +47,11 @@ func (h *Handler) InitRoutes(app *fiber.App) {
 	app.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 	app.Post("/createShortLink", h.createShortLink)
 	app.Get("/:key", h.redirect)
+	app.Get("/favicon.ico", h.iconCall)
+}
+
+func (h *Handler) iconCall(c *fiber.Ctx) error {
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
