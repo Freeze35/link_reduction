@@ -47,11 +47,6 @@ func (h *Handler) InitRoutes(app *fiber.App) {
 	app.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 	app.Post("/createShortLink", h.createShortLink)
 	app.Get("/:key", h.redirect)
-	app.Get("/favicon.ico", h.iconCall)
-}
-
-func (h *Handler) iconCall(c *fiber.Ctx) error {
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *Handler) restrictBodySize(c *fiber.Ctx, maxBodySize int) error {
@@ -110,12 +105,12 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 		return respondError(c, true, h.logger, http.StatusBadRequest, err.Error())
 	}
 
-	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
-
-	err = h.service.SendMessageToDB(originalURL, shortURL)
+	err = h.service.SendMessageToDB(originalURL, shortLink)
 	if err != nil {
 		return respondError(c, false, h.logger, http.StatusBadRequest, err.Error())
 	}
+
+	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
 		"shortURL": shortURL,
@@ -123,6 +118,8 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 }
 
 func (h *Handler) redirect(c *fiber.Ctx) error {
+
+	log.Print("Redirect URL")
 
 	fullURL := c.OriginalURL()
 	log.Print(fullURL)

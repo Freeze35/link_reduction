@@ -76,9 +76,7 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 		return fmt.Errorf("shorten URL: %w", err)
 	}
 
-	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
-
-	err = b.service.SendMessageToDB(originalURL, shortURL)
+	err = b.service.SendMessageToDB(originalURL, shortLink)
 	if err != nil {
 		err := c.Send(err.Error())
 		if err != nil {
@@ -86,6 +84,8 @@ func (b *Bot) handleShortenRequest(c tele.Context) error {
 		}
 		return err
 	}
+
+	shortURL := fmt.Sprintf("%s/%s", baseURL, shortLink)
 
 	err = c.Send(shortURL)
 	if err != nil {
