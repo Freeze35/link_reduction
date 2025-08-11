@@ -10,6 +10,7 @@ import (
 	"linkreduction/internal/const"
 	"linkreduction/internal/models"
 	initprometheus "linkreduction/internal/prometheus"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -116,6 +117,7 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortLink string) (string,
 		return "", fmt.Errorf("ошибка базы данных: %v", err)
 	}
 	if originalURL == "" {
+		log.Print("return empty url")
 		return "", nil
 	}
 
