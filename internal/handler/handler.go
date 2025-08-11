@@ -11,6 +11,7 @@ import (
 	"linkreduction/internal/config"
 	"linkreduction/internal/prometheus"
 	"linkreduction/internal/service"
+	"log"
 	"net/http"
 )
 
@@ -118,6 +119,8 @@ func (h *Handler) createShortLink(c *fiber.Ctx) error {
 
 func (h *Handler) redirect(c *fiber.Ctx) error {
 
+	fullURL := c.OriginalURL()
+	log.Print(fullURL)
 	shortLink := c.Params("key")
 
 	originalURL, err := h.service.GetOriginalURL(h.ctx, shortLink)
