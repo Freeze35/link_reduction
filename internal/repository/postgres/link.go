@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"linkreduction/internal/models"
 	"slices"
@@ -20,12 +21,18 @@ func NewPostgresLinkRepository(db *sql.DB) *Link {
 func (r *Link) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	var shortLink string
 	err := r.db.QueryRowContext(ctx, "SELECT short_link FROM links WHERE link = $1", originalURL).Scan(&shortLink)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
 	return shortLink, err
 }
 
 func (r *Link) FindByShortLink(ctx context.Context, shortLink string) (string, error) {
 	var originalURL string
 	err := r.db.QueryRowContext(ctx, "SELECT link FROM links WHERE short_link = $1", shortLink).Scan(&originalURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
 	return originalURL, err
 }
 
