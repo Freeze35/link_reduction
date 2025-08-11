@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"linkreduction/internal/models"
+	"log"
 	"slices"
 	"strings"
 )
@@ -30,7 +31,9 @@ func (r *Link) FindByOriginalURL(ctx context.Context, originalURL string) (strin
 func (r *Link) FindByShortLink(ctx context.Context, shortLink string) (string, error) {
 	var originalURL string
 	err := r.db.QueryRowContext(ctx, "SELECT link FROM links WHERE short_link = $1", shortLink).Scan(&originalURL)
+	log.Print("originalURLPG: ", shortLink)
 	if errors.Is(err, sql.ErrNoRows) {
+
 		return "", nil
 	}
 	return originalURL, err
