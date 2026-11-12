@@ -1,3 +1,19 @@
+
+<table>
+  <tr>
+    <td style="border: none; padding-top: 8px;">
+      <a href="https://boosty.to">
+        <img src=".github/Dark.png" width="36" height="36" alt="Boosty" />
+      </a>
+    </td>
+    <td style="border: none; padding-left: 8px; vertical-align: middle;">
+      <a href="https://boosty.to">
+        <b>Поддержать разработку проекта на Boosty</b>
+      </a>
+    </td>
+  </tr>
+</table>
+
 # LinkReduction
 
 Link Reduction App — 
